@@ -1,8 +1,8 @@
 <div class="sidebar-area" id="sidebar-area">
     <div class="logo position-relative">
         <a href="{{ route('dashboard') }}" class="d-block text-decoration-none position-relative">
-            <img src="/assets/images/logo-icon.png" alt="logo-icon">
-            <span class="logo-text fw-bold text-dark">BOGIS Finance</span>
+            <img src="{{ \App\Models\Setting::get('organization_logo') ? \Illuminate\Support\Facades\Storage::disk('uploads')->url(\App\Models\Setting::get('organization_logo')) : '/assets/images/logo-icon.png' }}" alt="logo-icon" style="width: 60px; height: 60px; object-fit: contain;">
+
         </a>
         <button class="sidebar-burger-menu bg-transparent p-0 border-0 opacity-0 z-n1 position-absolute top-50 end-0 translate-middle-y" id="sidebar-burger-menu">
             <i data-feather="x"></i>

@@ -16,14 +16,14 @@
                 <div class="m-auto m-1230">
                     <div class="row align-items-center">
                         <div class="col-lg-6 d-none d-lg-block">
-                            <img src="/assets/images/login.jpg" class="rounded-3" alt="login">
+                            <img src="{{ \App\Models\Setting::get('login_image') ? \Illuminate\Support\Facades\Storage::disk('uploads')->url(\App\Models\Setting::get('login_image')) : '/assets/images/login.jpg' }}" class="rounded-3" alt="login">
                         </div>
                         <div class="col-lg-6">
                             <div class="mw-480 ms-lg-auto">
                                 <a href="{{ route('login') }}" class="d-inline-block mb-4">
-                                    <img src="/assets/images/logo-icon.png" class="wh-40" alt="logo">
+                                    <img src="{{ \App\Models\Setting::get('organization_logo') ? \Illuminate\Support\Facades\Storage::disk('uploads')->url(\App\Models\Setting::get('organization_logo')) : '/assets/images/logo-icon.png' }}" style="width: 90px; height: auto;" alt="logo">
                                 </a>
-                                <h3 class="fs-28 mb-2">Welcome to BOGIS Finance</h3>
+                                <h3 class="fs-28 mb-2">Welcome to {{ \App\Models\Setting::get('organization_name', 'BOGIS Finance') }}</h3>
                                 <p class="fw-medium fs-16 mb-4">Borno State Geographic Information Service — Finance Management System</p>
 
                                 @if($errors->any())

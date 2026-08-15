@@ -77,6 +77,50 @@
     </div>
 
     <div class="card border-0 p-4 bg-white rounded-3 mt-4">
+        <h4 class="mb-2">Appearance</h4>
+        <p class="fs-14 text-secondary mb-4">
+            Customize the system branding — sidebar logo, browser favicon and the login page image.
+        </p>
+
+        <form method="POST" action="{{ route('settings.update') }}" enctype="multipart/form-data">
+            @csrf
+            @method('PUT')
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <label class="form-label">Organization Logo (sidebar &amp; login)</label>
+                    <div class="mb-2">
+                        <img src="{{ \App\Models\Setting::get('organization_logo') ? \Illuminate\Support\Facades\Storage::disk('uploads')->url(\App\Models\Setting::get('organization_logo')) : '/assets/images/logo-icon.png' }}"
+                            class="border rounded-3 p-2 bg-body-bg" style="height: 70px; width: auto;" alt="current logo">
+                    </div>
+                    <input type="file" name="organization_logo" class="form-control" accept="image/*">
+                    <small class="text-muted">PNG, JPG, SVG or WebP. Max 3 MB.</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Favicon</label>
+                    <div class="mb-2">
+                        <img src="{{ \App\Models\Setting::get('favicon') ? \Illuminate\Support\Facades\Storage::disk('uploads')->url(\App\Models\Setting::get('favicon')) : '/assets/images/favicon.png' }}"
+                            class="border rounded-3 p-2 bg-body-bg" style="height: 70px; width: auto;" alt="current favicon">
+                    </div>
+                    <input type="file" name="favicon" class="form-control" accept="image/*,.ico">
+                    <small class="text-muted">Shown in the browser tab. PNG, ICO or JPG.</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Login Page Image</label>
+                    <div class="mb-2">
+                        <img src="{{ \App\Models\Setting::get('login_image') ? \Illuminate\Support\Facades\Storage::disk('uploads')->url(\App\Models\Setting::get('login_image')) : '/assets/images/login.jpg' }}"
+                            class="border rounded-3" style="height: 70px; width: auto;" alt="current login image">
+                    </div>
+                    <input type="file" name="login_image" class="form-control" accept="image/*">
+                    <small class="text-muted">Left-side image on the login page.</small>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary px-4">Save Appearance</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="card border-0 p-4 bg-white rounded-3 mt-4">
         <h4 class="mb-2">BOGIS Forms Integration</h4>
         <p class="fs-14 text-secondary mb-4">
             When a user pays on BOGIS Forms (Zainpay), a receipt is automatically created and posted here.

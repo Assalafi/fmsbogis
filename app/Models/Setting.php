@@ -11,6 +11,10 @@ class Setting extends BaseModel
         static::saved(function () {
             Cache::forget('bogis.settings');
         });
+
+        static::deleted(function () {
+            Cache::forget('bogis.settings');
+        });
     }
 
     public static function get(string $key, $default = null)

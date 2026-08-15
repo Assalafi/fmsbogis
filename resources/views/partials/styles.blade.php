@@ -11,4 +11,4 @@
 <link rel="stylesheet" type="text/css" href="{{ url('/assets/css/jsvectormap.min.css') }}" />
 <link rel="stylesheet" type="text/css" href="{{ url('/assets/css/lightpick.css') }}" />
 <link rel="stylesheet" type="text/css" href="{{ url('/assets/scss/style.css') }}" />
-<link rel="icon" type="image/png" href="{{ url('/assets/images/favicon.png') }}">
+<link rel="icon" type="image/png" href="{{ \App\Models\Setting::get('favicon') ? \Illuminate\Support\Facades\Storage::disk('uploads')->url(\App\Models\Setting::get('favicon')) : url('/assets/images/favicon.png') }}">

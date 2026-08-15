@@ -40,6 +40,22 @@ class SettingsController extends Controller
             Setting::set($key, $value);
         }
 
+        foreach (['organization_logo', 'favicon', 'login_image'] as $fileKey) {
+            if ($request->hasFile($fileKey)) {
+                $request->validate([$fileKey => ['image', 'mimes:png,jpg,jpeg,svg,ico,webp,gif', 'max:3072']]);
+
+                $old = (string) Setting::get($fileKey);
+
+                $path = $request->file($fileKey)->store('settings', ['disk' => 'uploads']);
+
+                Setting::set($fileKey, $path);
+
+                if (str_starts_with($old, 'settings/')) {
+                    \Illuminate\Support\Facades\Storage::disk('uploads')->delete($old);
+                }
+            }
+        }
+
         return back()->with($this->toast('Settings saved.'));
     }
 
