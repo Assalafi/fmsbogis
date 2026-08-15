@@ -23,6 +23,11 @@
 
     <div class="card border-0 p-4 bg-white rounded-3 mb-4">
         <form method="GET" action="{{ route('receipts.index') }}" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fs-14">Search</label>
+                <input type="text" name="search" class="form-control" value="{{ request('search') }}"
+                    placeholder="Name, payment reference or phone...">
+            </div>
             <div class="col-md-2">
                 <label class="form-label fs-14">Fiscal Year</label>
                 <select name="fiscal_year_id" class="form-select">

@@ -47,6 +47,18 @@ class ReceiptController extends Controller
             $query->whereDate('date_of_transaction', '<=', $request->date_to);
         }
 
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+
+            $query->where(function ($q) use ($search) {
+                $q->where('from_whom_received_to_whom_paid', 'like', "%{$search}%")
+                    ->orWhere('treasury_receipt_voucher_number', 'like', "%{$search}%")
+                    ->orWhere('receipt_number', 'like', "%{$search}%")
+                    ->orWhere('external_reference', 'like', "%{$search}%")
+                    ->orWhere('payer_phone', 'like', "%{$search}%");
+            });
+        }
+
         $receipts = $query->orderBy('date_of_transaction', 'desc')->paginate(20)->withQueryString();
 
         $fiscalYears = FiscalYear::orderBy('start_date', 'desc')->get();
