@@ -1,0 +1,161 @@
+@extends('layouts.app')
+
+@section('title', 'Settings')
+
+@section('content')
+    <x-page-header title="Settings" :breadcrumbs="['Settings' => null]" />
+
+    <div class="card border-0 p-4 bg-white rounded-3">
+        <x-validation-errors />
+
+        <form method="POST" action="{{ route('settings.update') }}">
+            @csrf
+            @method('PUT')
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label class="form-label">Organization Name</label>
+                    <input type="text" name="organization_name" class="form-control"
+                        value="{{ \App\Models\Setting::get('organization_name', 'Borno State Geographic Information Service') }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Currency</label>
+                    <input type="text" name="currency" class="form-control" value="{{ \App\Models\Setting::get('currency', 'NGN') }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Currency Symbol</label>
+                    <input type="text" name="currency_symbol" class="form-control" value="{{ \App\Models\Setting::get('currency_symbol', '₦') }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Date Format</label>
+                    <select name="date_format" class="form-select">
+                        @foreach(['d M Y' => 'd M Y (15 Aug 2026)', 'd/m/Y' => 'd/m/Y (15/08/2026)', 'm/d/Y' => 'm/d/Y (08/15/2026)', 'Y-m-d' => 'Y-m-d (2026-08-15)'] as $format => $label)
+                            <option value="{{ $format }}" {{ \App\Models\Setting::get('date_format', 'd M Y') === $format ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Receipt Prefix</label>
+                    <input type="text" name="receipt_prefix" class="form-control" value="{{ \App\Models\Setting::get('receipt_prefix', 'TR') }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Payment Voucher Prefix</label>
+                    <input type="text" name="payment_voucher_prefix" class="form-control" value="{{ \App\Models\Setting::get('payment_voucher_prefix', 'TV') }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Pagination Size</label>
+                    <input type="number" name="pagination_size" class="form-control" value="{{ \App\Models\Setting::get('pagination_size', 20) }}">
+                </div>
+                <div class="col-md-12">
+                    <h5 class="mb-3">Approval Requirements</h5>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="require_receipt_approval" value="1"
+                            id="require_receipt_approval" {{ \App\Models\Setting::get('require_receipt_approval', '1') === '1' ? 'checked' : '' }}>
+                        <label class="form-check-label" for="require_receipt_approval">Require Receipt Approval</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="require_payment_approval" value="1"
+                            id="require_payment_approval" {{ \App\Models\Setting::get('require_payment_approval', '1') === '1' ? 'checked' : '' }}>
+                        <label class="form-check-label" for="require_payment_approval">Require Payment Approval</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="allow_cross_type_virement" value="1"
+                            id="allow_cross_type_virement" {{ \App\Models\Setting::get('allow_cross_type_virement', '0') === '1' ? 'checked' : '' }}>
+                        <label class="form-check-label" for="allow_cross_type_virement">Allow Cross-Type Virement</label>
+                    </div>
+                </div>
+                <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4">Save Settings</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="card border-0 p-4 bg-white rounded-3 mt-4">
+        <h4 class="mb-2">BOGIS Forms Integration</h4>
+        <p class="fs-14 text-secondary mb-4">
+            When a user pays on BOGIS Forms (Zainpay), a receipt is automatically created and posted here.
+            Choose which Account and Economic Codes imported receipts should use.
+        </p>
+
+        <form method="POST" action="{{ route('settings.update') }}">
+            @csrf
+            @method('PUT')
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <label class="form-label">Receipt Account <span class="text-danger">*</span></label>
+                    <select name="external_receipt_account_id" class="form-select" required>
+                        <option value="">Select Account</option>
+                        @foreach($accounts as $account)
+                            <option value="{{ $account->id }}" {{ \App\Models\Setting::get('external_receipt_account_id') === $account->id ? 'selected' : '' }}>
+                                {{ $account->account_name }} ({{ ucfirst($account->account_type) }})
+                            </option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted">All imported receipts are posted to this account.</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Application Fee Economic Code <span class="text-danger">*</span></label>
+                    <select name="external_application_fee_code_id" class="form-select" required>
+                        <option value="">Select Revenue Code</option>
+                        @foreach($revenueCodes as $code)
+                            <option value="{{ $code->id }}" {{ \App\Models\Setting::get('external_application_fee_code_id') === $code->id ? 'selected' : '' }}>
+                                {{ $code->code }} — {{ $code->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted">Used for regular application fee payments.</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Plot Premium / Allocation Economic Code <span class="text-danger">*</span></label>
+                    <select name="external_premium_code_id" class="form-select" required>
+                        <option value="">Select Revenue Code</option>
+                        @foreach($revenueCodes as $code)
+                            <option value="{{ $code->id }}" {{ \App\Models\Setting::get('external_premium_code_id') === $code->id ? 'selected' : '' }}>
+                                {{ $code->code }} — {{ $code->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted">Used for Plot Premium and Allocation Fee payments.</small>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary px-4">Save Integration Settings</button>
+                </div>
+            </div>
+        </form>
+
+        <hr class="my-4">
+
+        <h5 class="mb-2">Users Who Already Paid</h5>
+        <p class="fs-14 text-secondary mb-3">
+            Payments made before this integration (or pushes that failed) can be pulled in with one click.
+            Duplicates are skipped automatically — each payment reference only ever creates one receipt.
+        </p>
+        <form method="POST" action="{{ route('settings.sync-forms-payments') }}" class="row g-3 align-items-end">
+            @csrf
+            <div class="col-md-3">
+                <label class="form-label fs-14">Only since (optional)</label>
+                <input type="date" name="since" class="form-control" value="{{ now()->subDays(30)->format('Y-m-d') }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-success w-100"
+                    onclick="return confirm('Sync paid payments from BOGIS Forms? Duplicates will be skipped.');">
+                    <i class="material-symbols-outlined align-middle fs-18">sync</i>
+                    Sync Paid Payments Now
+                </button>
+            </div>
+            <div class="col-md-6">
+                <small class="text-muted d-block">
+                    API endpoint: <code>{{ url('api/v1/external/receipts') }}</code> ·
+                    Forms API: <code>{{ config('services.bogis_forms.api_url') }}/api/paid-payments</code><br>
+                    Also available as artisan command: <code>php artisan receipts:sync-from-forms</code>
+                </small>
+            </div>
+        </form>
+    </div>
+@endsection
