@@ -151,16 +151,7 @@ class ExternalReceiptService
 
     protected function buildDetails(array $payment): string
     {
-        $feeType = (string) ($payment['fee_type'] ?? 'BOGIS Forms Payment');
-        $channel = strtoupper((string) ($payment['channel'] ?? 'card'));
-
-        $details = "Imported from BOGIS Forms — {$feeType} ({$channel} payment).";
-
-        if (! empty($payment['customer_email'])) {
-            $details .= " Payer email: {$payment['customer_email']}.";
-        }
-
-        return $details;
+        return trim((string) ($payment['fee_type'] ?? 'BOGIS Forms Payment'));
     }
 
     /**
