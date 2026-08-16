@@ -8,10 +8,6 @@
             <i class="material-symbols-outlined align-middle fs-18">print</i>
             Print Cash Receipt
         </a>
-        <a href="{{ route('receipts.print', $receipt) }}" class="btn btn-secondary" target="_blank">
-            <i class="material-symbols-outlined align-middle fs-18">receipt_long</i>
-            Print Statement
-        </a>
 
         @can('receipts.approve')
             @if($receipt->status === 'pending')

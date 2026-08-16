@@ -113,7 +113,7 @@
                                     <a href="{{ route('receipts.edit', $receipt) }}" class="text-primary" title="Edit"><i class="material-symbols-outlined fs-20">edit</i></a>
                                     @endif
                                     @endcan
-                                    <a href="{{ route('receipts.print', $receipt) }}" class="text-secondary" title="Print" target="_blank"><i class="material-symbols-outlined fs-20">print</i></a>
+                                    <a href="{{ route('receipts.pdf', $receipt) }}" class="text-secondary" title="Print Receipt PDF" target="_blank"><i class="material-symbols-outlined fs-20">print</i></a>
                                 </div>
                             </td>
                         </tr>
