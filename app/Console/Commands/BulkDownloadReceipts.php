@@ -24,6 +24,8 @@ class BulkDownloadReceipts extends Command
         $ids = array_filter(explode(',', (string) $this->option('ids')));
         $filters = json_decode((string) $this->option('filters'), true) ?: [];
 
+        $this->cleanupStaleZips();
+
         $query = Receipt::query();
 
         if (! empty($ids)) {
@@ -79,6 +81,19 @@ class BulkDownloadReceipts extends Command
         $this->info("Done. {$total} receipts packed, {$failed} failed.");
 
         return self::SUCCESS;
+    }
+
+    protected function cleanupStaleZips(): void
+    {
+        $files = Storage::disk('local')->files('bulk');
+
+        foreach ($files as $file) {
+            $modified = Storage::disk('local')->lastModified($file);
+
+            if ($modified !== null && now()->subDays(1)->timestamp > $modified) {
+                Storage::disk('local')->delete($file);
+            }
+        }
     }
 
     protected function applyFilters($query, array $filters): void

@@ -314,7 +314,7 @@ class ReceiptController extends Controller
 
         abort_unless(file_exists($zipPath), 404, 'ZIP file missing.');
 
-        return response()->download($zipPath, 'BOGIS-Receipts-'.$token.'.zip');
+        return response()->download($zipPath, 'BOGIS-Receipts-'.$token.'.zip')->deleteFileAfterSend(true);
     }
 
     protected function applyIndexFilters($query, Request $request)
