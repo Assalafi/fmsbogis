@@ -205,6 +205,17 @@ class ReceiptController extends Controller
             $filters = $request->only(['fiscal_year_id', 'account_id', 'economic_code_id', 'status', 'payment_method', 'search', 'date_from', 'date_to']);
         }
 
+        $token = (string) \Illuminate\Support\Str::uuid();
+
+        // Persist the request so the download link can be re-used later.
+        \App\Models\BulkDownload::create([
+            'token' => $token,
+            'receipt_ids' => ! empty($ids) ? array_values($ids) : null,
+            'filters' => $filters,
+            'total' => $total,
+            'created_by' => auth()->id(),
+        ]);
+
         if ($total <= \App\Support\BulkDownloadProgress::MAX_SYNC) {
             return $this->buildZipAndDownload($query, $total);
         }
@@ -214,7 +225,7 @@ class ReceiptController extends Controller
             return back()->with($this->toast('A bulk download is already running. Please wait.', 'warning'));
         }
 
-        $token = \App\Support\BulkDownloadProgress::start($total);
+        \App\Support\BulkDownloadProgress::start($total, $token);
 
         $command = [
             (string) config('services.external_receipts.php_binary', 'php8.3'),
@@ -246,36 +257,7 @@ class ReceiptController extends Controller
      */
     protected function buildZipAndDownload($query, int $total)
     {
-        set_time_limit(0);
-
-        $pdfService = app(\App\Services\ReceiptPdfService::class);
-
-        $zipName = 'BOGIS-Receipts-'.now()->format('Ymd-His').'.zip';
-
-        $failed = 0;
-
-        $response = response()->streamDownload(function () use ($query, $pdfService, &$failed) {
-            $zip = new \ZipStream\ZipStream(outputName: 'receipts.zip', sendHttpHeaders: false);
-
-            $query->chunkById(50, function ($receipts) use ($zip, $pdfService, &$failed) {
-                foreach ($receipts as $receipt) {
-                    try {
-                        $zip->addFile(fileName: $pdfService->filename($receipt), data: $pdfService->generate($receipt));
-                    } catch (\Throwable) {
-                        $failed++;
-                    }
-                }
-            });
-
-            $zip->finish();
-        }, $zipName);
-
-        app(AuditService::class)->log('Receipts Bulk Downloaded', null, null, [
-            'total' => $total,
-            'failed' => $failed,
-        ]);
-
-        return $response;
+        return $this->streamZip($query, $total, 'BOGIS-Receipts-'.now()->format('Ymd-His').'.zip');
     }
 
     /**
@@ -297,19 +279,84 @@ class ReceiptController extends Controller
     }
 
     /**
-     * Download a finished background ZIP.
+     * Download a bulk ZIP. If the pre-built file exists it is streamed and
+     * deleted afterwards; otherwise the ZIP is regenerated on the fly.
      */
     public function bulkDownloadFile(string $token)
     {
+        $bulk = \App\Models\BulkDownload::where('token', $token)->first();
+
+        abort_unless($bulk, 404, 'Bulk download not found.');
+
         $state = \App\Support\BulkDownloadProgress::state($token);
 
-        abort_unless($state['status'] === 'done' && ! empty($state['zip_path']), 404, 'Bulk download not ready.');
+        $zipPath = null;
 
-        $zipPath = \Illuminate\Support\Facades\Storage::disk('local')->path($state['zip_path']);
+        if ($state['status'] === 'done' && ! empty($state['zip_path'])) {
+            $candidate = \Illuminate\Support\Facades\Storage::disk('local')->path($state['zip_path']);
 
-        abort_unless(file_exists($zipPath), 404, 'ZIP file missing.');
+            if (file_exists($candidate)) {
+                $zipPath = $candidate;
+            }
+        }
 
-        return response()->download($zipPath, 'BOGIS-Receipts-'.$token.'.zip')->deleteFileAfterSend(true);
+        if ($zipPath !== null) {
+            return response()->download($zipPath, 'BOGIS-Receipts-'.$token.'.zip')->deleteFileAfterSend(true);
+        }
+
+        // Regenerate and stream on demand.
+        return $this->streamZip($this->queryForBulk($bulk), $bulk->total, 'BOGIS-Receipts-'.$token.'.zip');
+    }
+
+    protected function queryForBulk(\App\Models\BulkDownload $bulk)
+    {
+        $query = Receipt::query();
+
+        if (! empty($bulk->receipt_ids)) {
+            $query->whereIn('id', $bulk->receipt_ids);
+
+            return $query;
+        }
+
+        $request = request()->merge($bulk->filters ?? []);
+
+        $fiscalYearId = ! empty($bulk->filters['fiscal_year_id'])
+            ? $bulk->filters['fiscal_year_id']
+            : ActiveFiscalYear::id();
+
+        return $this->applyIndexFilters($query, $request)->where('fiscal_year_id', $fiscalYearId);
+    }
+
+    protected function streamZip($query, int $total, string $zipName)
+    {
+        set_time_limit(0);
+
+        $pdfService = app(\App\Services\ReceiptPdfService::class);
+
+        $failed = 0;
+
+        $response = response()->streamDownload(function () use ($query, $pdfService, &$failed) {
+            $zip = new \ZipStream\ZipStream(outputName: 'receipts.zip', sendHttpHeaders: false);
+
+            $query->chunkById(50, function ($receipts) use ($zip, $pdfService, &$failed) {
+                foreach ($receipts as $receipt) {
+                    try {
+                        $zip->addFile(fileName: $pdfService->filename($receipt), data: $pdfService->generate($receipt));
+                    } catch (\Throwable) {
+                        $failed++;
+                    }
+                }
+            });
+
+            $zip->finish();
+        }, $zipName);
+
+        app(AuditService::class)->log('Receipts Bulk Downloaded (regenerated)', null, null, [
+            'total' => $total,
+            'failed' => $failed,
+        ]);
+
+        return $response;
     }
 
     protected function applyIndexFilters($query, Request $request)

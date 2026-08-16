@@ -38,9 +38,9 @@ class BulkDownloadProgress
         return Cache::get('bogis.bulk-download-active-token');
     }
 
-    public static function start(int $total): string
+    public static function start(int $total, ?string $token = null): string
     {
-        $token = (string) \Illuminate\Support\Str::uuid();
+        $token = $token ?? (string) \Illuminate\Support\Str::uuid();
 
         Cache::put(self::key($token), [
             'token' => $token,
