@@ -4,7 +4,35 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title>Login — BOGIS Finance</title>
+        @php
+            $metaOrg = \App\Models\Setting::get('organization_name', 'BOGIS Finance');
+            $metaDescription = \App\Models\Setting::get('meta_description', 'Sign in to the BOGIS Finance Management System — budget control, receipts, payments, cashbook, bank reconciliation and reports.');
+            $metaKeywords = \App\Models\Setting::get('meta_keywords', 'BOGIS, Borno State, finance, login, budget, receipts, payments');
+            $metaLogo = \App\Models\Setting::get('organization_logo')
+                ? \Illuminate\Support\Facades\Storage::disk('uploads')->url(\App\Models\Setting::get('organization_logo'))
+                : url('/assets/images/logo-icon.png');
+        @endphp
+
+        <title>Login — {{ $metaOrg }}</title>
+
+        <meta name="description" content="{{ $metaDescription }}">
+        <meta name="keywords" content="{{ $metaKeywords }}">
+        <meta name="author" content="{{ $metaOrg }}">
+        <meta name="robots" content="noindex, nofollow">
+        <meta name="theme-color" content="#075629">
+        <link rel="canonical" href="{{ url()->current() }}">
+
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="{{ $metaOrg }}">
+        <meta property="og:title" content="Login — {{ $metaOrg }}">
+        <meta property="og:description" content="{{ $metaDescription }}">
+        <meta property="og:url" content="{{ url()->current() }}">
+        <meta property="og:image" content="{{ $metaLogo }}">
+
+        <meta name="twitter:card" content="summary">
+        <meta name="twitter:title" content="Login — {{ $metaOrg }}">
+        <meta name="twitter:description" content="{{ $metaDescription }}">
+        <meta name="twitter:image" content="{{ $metaLogo }}">
 
         @include('partials.styles')
     </head>

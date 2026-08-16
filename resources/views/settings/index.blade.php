@@ -17,6 +17,16 @@
                     <input type="text" name="organization_name" class="form-control"
                         value="{{ \App\Models\Setting::get('organization_name', 'Borno State Geographic Information Service') }}">
                 </div>
+                <div class="col-md-12">
+                    <label class="form-label">Meta Description</label>
+                    <input type="text" name="meta_description" class="form-control"
+                        value="{{ \App\Models\Setting::get('meta_description', 'BOGIS Finance Management System — budget control, receipts, payments, cashbook, bank reconciliation, performance and reports for Borno State Geographic Information Service.') }}">
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label">Meta Keywords</label>
+                    <input type="text" name="meta_keywords" class="form-control"
+                        value="{{ \App\Models\Setting::get('meta_keywords', 'BOGIS, Borno State, finance management, budget, receipts, payments, cashbook, bank reconciliation, treasury') }}">
+                </div>
                 <div class="col-md-3">
                     <label class="form-label">Currency</label>
                     <input type="text" name="currency" class="form-control" value="{{ \App\Models\Setting::get('currency', 'NGN') }}">

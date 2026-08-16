@@ -21,6 +21,8 @@ class SettingsController extends Controller
     {
         $data = $request->validate([
             'organization_name' => ['nullable', 'string', 'max:255'],
+            'meta_description' => ['nullable', 'string', 'max:255'],
+            'meta_keywords' => ['nullable', 'string', 'max:255'],
             'currency' => ['nullable', 'string', 'max:10'],
             'currency_symbol' => ['nullable', 'string', 'max:10'],
             'date_format' => ['nullable', 'string', 'max:20'],
