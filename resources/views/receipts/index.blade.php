@@ -4,6 +4,14 @@
 
 @section('content')
     <x-page-header title="Receipt Register" :breadcrumbs="['Receipts' => null]">
+        <button type="button" class="btn btn-danger" id="bulk-download-btn" disabled>
+            <i class="material-symbols-outlined align-middle fs-18">folder_zip</i>
+            Download Selected (ZIP)
+        </button>
+        <button type="button" class="btn btn-outline-secondary" id="bulk-download-all-btn">
+            <i class="material-symbols-outlined align-middle fs-18">all_inbox</i>
+            Download All Filtered (ZIP)
+        </button>
         @can('receipts.create')
         <a href="{{ route('receipts.create') }}" class="btn btn-primary">
             <i class="material-symbols-outlined align-middle fs-18">add</i>
@@ -83,6 +91,9 @@
             <table class="table table-hover align-middle">
                 <thead>
                     <tr>
+                        <th style="width: 36px;">
+                            <input type="checkbox" class="form-check-input" id="select-all" title="Select all on this page">
+                        </th>
                         <th>Date</th>
                         <th>Treasury Receipt No.</th>
                         <th>Account</th>
@@ -97,6 +108,9 @@
                 <tbody>
                     @forelse($receipts as $receipt)
                         <tr>
+                            <td>
+                                <input type="checkbox" class="form-check-input receipt-check" value="{{ $receipt->id }}">
+                            </td>
                             <td>{{ $receipt->date_of_transaction->format('d M Y') }}</td>
                             <td class="fw-medium">{{ $receipt->treasury_receipt_voucher_number }}</td>
                             <td>{{ $receipt->account->account_name }}</td>
@@ -119,7 +133,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center text-secondary py-4">
+                            <td colspan="10" class="text-center text-secondary py-4">
                                 No receipts found.
                                 @can('receipts.create')
                                 <div class="mt-2">
@@ -136,4 +150,131 @@
             {{ $receipts->links() }}
         </div>
     </div>
+
+    <div class="card border-0 p-4 bg-white rounded-3 mt-4" id="bulk-progress-card" style="display: none;">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <h6 class="mb-0" id="bulk-status-text">Preparing ZIP…</h6>
+            <span class="badge bg-info" id="bulk-percent-text">0%</span>
+        </div>
+        <div class="progress mb-3" style="height: 12px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" id="bulk-progress-bar"
+                role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <div class="row fs-14">
+            <div class="col-md-4"><span class="text-secondary">Total:</span> <strong id="bulk-total">0</strong></div>
+            <div class="col-md-4"><span class="text-secondary">Packed:</span> <strong id="bulk-done" class="text-success">0</strong></div>
+            <div class="col-md-4"><span class="text-secondary">Failed:</span> <strong id="bulk-failed" class="text-danger">0</strong></div>
+        </div>
+        <div id="bulk-message" class="alert alert-success mt-3 mb-0" style="display: none;"></div>
+    </div>
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    const selectAll = document.getElementById('select-all');
+    const checks = document.querySelectorAll('.receipt-check');
+    const bulkBtn = document.getElementById('bulk-download-btn');
+    const bulkAllBtn = document.getElementById('bulk-download-all-btn');
+    const progressCard = document.getElementById('bulk-progress-card');
+    const progressBar = document.getElementById('bulk-progress-bar');
+    const percentText = document.getElementById('bulk-percent-text');
+    const statusText = document.getElementById('bulk-status-text');
+    const messageBox = document.getElementById('bulk-message');
+    let pollTimer = null;
+
+    function updateButton() {
+        const selected = [...checks].filter(c => c.checked);
+        bulkBtn.disabled = selected.length === 0;
+        bulkBtn.innerHTML = '<i class="material-symbols-outlined align-middle fs-18">folder_zip</i> Download Selected (' + selected.length + ')';
+    }
+
+    selectAll.addEventListener('change', function () {
+        checks.forEach(c => c.checked = selectAll.checked);
+        updateButton();
+    });
+
+    checks.forEach(c => c.addEventListener('change', updateButton));
+
+    function postBulk(ids) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ route('receipts.bulk-download') }}';
+        form.style.display = 'none';
+        form.innerHTML = '<input type="hidden" name="_token" value="{{ csrf_token() }}">';
+        ids.forEach(id => {
+            form.innerHTML += '<input type="hidden" name="receipt_ids[]" value="' + id + '">';
+        });
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    bulkBtn.addEventListener('click', function () {
+        const ids = [...checks].filter(c => c.checked).map(c => c.value);
+        if (ids.length === 0) return;
+        if (!confirm('Download ' + ids.length + ' receipt PDF(s) as a ZIP?')) return;
+        postBulk(ids);
+    });
+
+    bulkAllBtn.addEventListener('click', function () {
+        if (!confirm('Download ALL receipts matching the current filters as a ZIP? This may take a while for large sets.')) return;
+        postBulk([]);
+    });
+
+    function render(state) {
+        if (state.status === 'idle') return;
+
+        progressCard.style.display = 'block';
+        progressBar.style.width = state.percent + '%';
+        progressBar.setAttribute('aria-valuenow', state.percent);
+        percentText.textContent = state.percent + '%';
+        document.getElementById('bulk-total').textContent = state.total;
+        document.getElementById('bulk-done').textContent = state.done;
+        document.getElementById('bulk-failed').textContent = state.failed;
+
+        if (state.status === 'running') {
+            statusText.textContent = 'Preparing ZIP…';
+            messageBox.style.display = 'none';
+            bulkBtn.disabled = true;
+            bulkAllBtn.disabled = true;
+            if (!pollTimer) pollTimer = setInterval(poll, 2000);
+        } else if (state.status === 'done') {
+            statusText.textContent = 'ZIP ready — downloading…';
+            progressBar.classList.remove('progress-bar-animated');
+            clearInterval(pollTimer);
+            pollTimer = null;
+            bulkBtn.disabled = false;
+            bulkAllBtn.disabled = false;
+            updateButton();
+            window.location.href = '{{ route('receipts.bulk-download-file', ['token' => '__TOKEN__']) }}'.replace('__TOKEN__', state.token);
+        } else if (state.status === 'error') {
+            statusText.textContent = 'Bulk download failed';
+            progressBar.classList.remove('progress-bar-animated');
+            progressBar.classList.remove('bg-danger');
+            progressBar.classList.add('bg-danger');
+            clearInterval(pollTimer);
+            pollTimer = null;
+            bulkBtn.disabled = false;
+            bulkAllBtn.disabled = false;
+            updateButton();
+            messageBox.style.display = 'block';
+            messageBox.className = 'alert alert-danger mt-3 mb-0';
+            messageBox.textContent = state.message;
+        }
+    }
+
+    function poll() {
+        fetch('{{ route('receipts.bulk-download-progress') }}', {
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin',
+        })
+        .then(r => r.json())
+        .then(render)
+        .catch(() => {});
+    }
+
+    poll();
+    updateButton();
+})();
+</script>
+@endpush

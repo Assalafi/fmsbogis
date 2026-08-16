@@ -20,44 +20,8 @@ class ReceiptController extends Controller
     {
         $fiscalYearId = $request->filled('fiscal_year_id') ? $request->fiscal_year_id : ActiveFiscalYear::id();
 
-        $query = Receipt::with(['account', 'economicCode', 'fiscalYear', 'creator'])
+        $query = $this->applyIndexFilters(Receipt::with(['account', 'economicCode', 'fiscalYear', 'creator']), $request)
             ->where('fiscal_year_id', $fiscalYearId);
-
-        if ($request->filled('account_id')) {
-            $query->where('account_id', $request->account_id);
-        }
-
-        if ($request->filled('economic_code_id')) {
-            $query->where('economic_code_id', $request->economic_code_id);
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('payment_method')) {
-            $query->where('payment_method', $request->payment_method);
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('date_of_transaction', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('date_of_transaction', '<=', $request->date_to);
-        }
-
-        if ($request->filled('search')) {
-            $search = trim($request->search);
-
-            $query->where(function ($q) use ($search) {
-                $q->where('from_whom_received_to_whom_paid', 'like', "%{$search}%")
-                    ->orWhere('treasury_receipt_voucher_number', 'like', "%{$search}%")
-                    ->orWhere('receipt_number', 'like', "%{$search}%")
-                    ->orWhere('external_reference', 'like', "%{$search}%")
-                    ->orWhere('payer_phone', 'like', "%{$search}%");
-            });
-        }
 
         $receipts = $query->orderBy('date_of_transaction', 'desc')->paginate(20)->withQueryString();
 
@@ -207,5 +171,190 @@ class ReceiptController extends Controller
         ])->setPaper('a4');
 
         return $pdf->stream('receipt-'.$receipt->treasury_receipt_voucher_number.'.pdf');
+    }
+
+    /**
+     * Bulk download receipt PDFs as a ZIP.
+     */
+    public function bulkDownload(Request $request)
+    {
+        $request->validate([
+            'receipt_ids' => ['nullable', 'array', 'max:2000'],
+            'receipt_ids.*' => ['uuid', 'exists:receipts,id'],
+        ]);
+
+        $ids = $request->input('receipt_ids', []);
+
+        $query = Receipt::query();
+
+        if (! empty($ids)) {
+            $query->whereIn('id', $ids);
+        } else {
+            $fiscalYearId = $request->filled('fiscal_year_id') ? $request->fiscal_year_id : ActiveFiscalYear::id();
+            $this->applyIndexFilters($query, $request)->where('fiscal_year_id', $fiscalYearId);
+        }
+
+        $total = $query->count();
+
+        if ($total === 0) {
+            return back()->with($this->toast('No receipts matched. Select receipts or apply filters first.', 'warning'));
+        }
+
+        $filters = null;
+        if (empty($ids)) {
+            $filters = $request->only(['fiscal_year_id', 'account_id', 'economic_code_id', 'status', 'payment_method', 'search', 'date_from', 'date_to']);
+        }
+
+        if ($total <= \App\Support\BulkDownloadProgress::MAX_SYNC) {
+            return $this->buildZipAndDownload($query, $total);
+        }
+
+        // Large selection: run in the background with progress.
+        if (\App\Support\BulkDownloadProgress::isRunning()) {
+            return back()->with($this->toast('A bulk download is already running. Please wait.', 'warning'));
+        }
+
+        $token = \App\Support\BulkDownloadProgress::start($total);
+
+        $command = [
+            (string) config('services.external_receipts.php_binary', 'php8.3'),
+            base_path('artisan'),
+            'receipts:bulk-download',
+            '--token='.$token,
+        ];
+
+        if (! empty($ids)) {
+            $command[] = '--ids='.implode(',', $ids);
+        } else {
+            $command[] = '--filters='.escapeshellarg(json_encode($filters));
+        }
+
+        try {
+            $shellCommand = implode(' ', array_map('escapeshellarg', $command)).' > /dev/null 2>&1 & echo $!';
+            shell_exec($shellCommand);
+
+            return back()->with($this->toast("Bulk download started for {$total} receipts. Progress is shown below.", 'success'));
+        } catch (\Throwable $e) {
+            \App\Support\BulkDownloadProgress::fail($token, $e->getMessage());
+
+            return back()->with($this->toast('Could not start bulk download: '.$e->getMessage(), 'danger'));
+        }
+    }
+
+    /**
+     * Build the ZIP synchronously and stream it.
+     */
+    protected function buildZipAndDownload($query, int $total)
+    {
+        set_time_limit(0);
+
+        $pdfService = app(\App\Services\ReceiptPdfService::class);
+
+        $token = (string) \Illuminate\Support\Str::uuid();
+        $zipName = 'BOGIS-Receipts-'.now()->format('Ymd-His').'.zip';
+        $zipPath = \Illuminate\Support\Facades\Storage::disk('local')->path('bulk/'.$token.'.zip');
+
+        \Illuminate\Support\Facades\Storage::disk('local')->makeDirectory('bulk');
+
+        $zip = new \ZipArchive;
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            return back()->with($this->toast('Could not create the ZIP file.', 'danger'));
+        }
+
+        $failed = 0;
+
+        $query->chunkById(50, function ($receipts) use ($zip, $pdfService, &$failed) {
+            foreach ($receipts as $receipt) {
+                try {
+                    $zip->addFromString($pdfService->filename($receipt), $pdfService->generate($receipt));
+                } catch (\Throwable) {
+                    $failed++;
+                }
+            }
+        });
+
+        $zip->close();
+
+        app(AuditService::class)->log('Receipts Bulk Downloaded', null, null, [
+            'total' => $total,
+            'failed' => $failed,
+        ]);
+
+        return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * JSON progress for the bulk download UI.
+     */
+    public function bulkDownloadProgress()
+    {
+        $state = \App\Support\BulkDownloadProgress::state();
+
+        return response()->json([
+            'token' => $state['token'],
+            'status' => $state['status'],
+            'total' => (int) $state['total'],
+            'done' => (int) $state['done'],
+            'failed' => (int) $state['failed'],
+            'percent' => \App\Support\BulkDownloadProgress::percent((string) $state['token']),
+            'message' => $state['message'],
+        ]);
+    }
+
+    /**
+     * Download a finished background ZIP.
+     */
+    public function bulkDownloadFile(string $token)
+    {
+        $state = \App\Support\BulkDownloadProgress::state($token);
+
+        abort_unless($state['status'] === 'done' && ! empty($state['zip_path']), 404, 'Bulk download not ready.');
+
+        $zipPath = \Illuminate\Support\Facades\Storage::disk('local')->path($state['zip_path']);
+
+        abort_unless(file_exists($zipPath), 404, 'ZIP file missing.');
+
+        return response()->download($zipPath, 'BOGIS-Receipts-'.$token.'.zip');
+    }
+
+    protected function applyIndexFilters($query, Request $request)
+    {
+        if ($request->filled('account_id')) {
+            $query->where('account_id', $request->account_id);
+        }
+
+        if ($request->filled('economic_code_id')) {
+            $query->where('economic_code_id', $request->economic_code_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('payment_method')) {
+            $query->where('payment_method', $request->payment_method);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('date_of_transaction', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('date_of_transaction', '<=', $request->date_to);
+        }
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+
+            $query->where(function ($q) use ($search) {
+                $q->where('from_whom_received_to_whom_paid', 'like', "%{$search}%")
+                    ->orWhere('treasury_receipt_voucher_number', 'like', "%{$search}%")
+                    ->orWhere('receipt_number', 'like', "%{$search}%")
+                    ->orWhere('external_reference', 'like', "%{$search}%")
+                    ->orWhere('payer_phone', 'like', "%{$search}%");
+            });
+        }
+
+        return $query;
     }
 }

@@ -82,6 +82,9 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::get('/', [ReceiptController::class, 'index'])->name('index');
         Route::get('create', [ReceiptController::class, 'create'])->name('create')->middleware('permission:receipts.create');
         Route::post('/', [ReceiptController::class, 'store'])->name('store')->middleware('permission:receipts.create');
+        Route::post('bulk-download', [ReceiptController::class, 'bulkDownload'])->name('bulk-download');
+        Route::get('bulk-download/progress', [ReceiptController::class, 'bulkDownloadProgress'])->name('bulk-download-progress');
+        Route::get('bulk-download/file/{token}', [ReceiptController::class, 'bulkDownloadFile'])->name('bulk-download-file');
         Route::get('{receipt}', [ReceiptController::class, 'show'])->name('show');
         Route::get('{receipt}/pdf', [\App\Http\Controllers\BogisCashReceiptPdfController::class, 'show'])->name('pdf');
         Route::get('{receipt}/edit', [ReceiptController::class, 'edit'])->name('edit')->middleware('permission:receipts.create');
