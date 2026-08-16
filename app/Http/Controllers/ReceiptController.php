@@ -242,7 +242,7 @@ class ReceiptController extends Controller
     }
 
     /**
-     * Build the ZIP synchronously and stream it.
+     * Build the ZIP and stream it directly to the browser (no disk usage).
      */
     protected function buildZipAndDownload($query, int $total)
     {
@@ -250,37 +250,32 @@ class ReceiptController extends Controller
 
         $pdfService = app(\App\Services\ReceiptPdfService::class);
 
-        $token = (string) \Illuminate\Support\Str::uuid();
         $zipName = 'BOGIS-Receipts-'.now()->format('Ymd-His').'.zip';
-        $zipPath = \Illuminate\Support\Facades\Storage::disk('local')->path('bulk/'.$token.'.zip');
-
-        \Illuminate\Support\Facades\Storage::disk('local')->makeDirectory('bulk');
-
-        $zip = new \ZipArchive;
-        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-            return back()->with($this->toast('Could not create the ZIP file.', 'danger'));
-        }
 
         $failed = 0;
 
-        $query->chunkById(50, function ($receipts) use ($zip, $pdfService, &$failed) {
-            foreach ($receipts as $receipt) {
-                try {
-                    $zip->addFromString($pdfService->filename($receipt), $pdfService->generate($receipt));
-                } catch (\Throwable) {
-                    $failed++;
-                }
-            }
-        });
+        $response = response()->streamDownload(function () use ($query, $pdfService, &$failed) {
+            $zip = new \ZipStream\ZipStream(outputName: 'receipts.zip', sendHttpHeaders: false);
 
-        $zip->close();
+            $query->chunkById(50, function ($receipts) use ($zip, $pdfService, &$failed) {
+                foreach ($receipts as $receipt) {
+                    try {
+                        $zip->addFile(fileName: $pdfService->filename($receipt), data: $pdfService->generate($receipt));
+                    } catch (\Throwable) {
+                        $failed++;
+                    }
+                }
+            });
+
+            $zip->finish();
+        }, $zipName);
 
         app(AuditService::class)->log('Receipts Bulk Downloaded', null, null, [
             'total' => $total,
             'failed' => $failed,
         ]);
 
-        return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
+        return $response;
     }
 
     /**

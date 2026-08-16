@@ -7,7 +7,7 @@ use App\Services\ReceiptPdfService;
 use App\Support\BulkDownloadProgress;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
-use ZipArchive;
+use ZipStream\ZipStream;
 
 class BulkDownloadReceipts extends Command
 {
@@ -44,37 +44,46 @@ class BulkDownloadReceipts extends Command
 
         $zipPath = 'bulk/receipts-'.$token.'.zip';
         $absoluteZip = Storage::disk('local')->path($zipPath);
+        $zipName = 'BOGIS-Receipts-'.$token.'.zip';
 
         Storage::disk('local')->makeDirectory('bulk');
 
-        $zip = new ZipArchive;
-        if ($zip->open($absoluteZip, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        // Stream the archive to disk incrementally (low memory usage).
+        $stream = fopen($absoluteZip, 'wb');
+
+        if ($stream === false) {
             BulkDownloadProgress::fail($token, 'Could not create the ZIP file on disk.');
 
             return self::FAILURE;
         }
 
+        $zip = new ZipStream(outputName: $zipName, outputStream: $stream, sendHttpHeaders: false);
+
         $done = 0;
         $failed = 0;
 
-        $query->chunkById(50, function ($receipts) use (&$done, &$failed, $zip, $pdfService, $token, $total) {
-            foreach ($receipts as $receipt) {
-                try {
-                    $pdf = $pdfService->generate($receipt);
+        try {
+            $query->chunkById(50, function ($receipts) use (&$done, &$failed, $zip, $pdfService, $token, $total) {
+                foreach ($receipts as $receipt) {
+                    try {
+                        $pdf = $pdfService->generate($receipt);
 
-                    $zip->addFromString($pdfService->filename($receipt), $pdf);
-                } catch (\Throwable) {
-                    $failed++;
+                        $zip->addFile(fileName: $pdfService->filename($receipt), data: $pdf);
+                    } catch (\Throwable) {
+                        $failed++;
+                    }
+
+                    $done++;
+                    BulkDownloadProgress::update($token, $done, $failed);
+
+                    $this->line("{$done}/{$total} packed");
                 }
+            });
 
-                $done++;
-                BulkDownloadProgress::update($token, $done, $failed);
-
-                $this->line("{$done}/{$total} packed");
-            }
-        });
-
-        $zip->close();
+            $zip->finish();
+        } finally {
+            fclose($stream);
+        }
 
         BulkDownloadProgress::finish($token, $zipPath, $total, $failed);
 
