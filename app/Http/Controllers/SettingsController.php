@@ -89,11 +89,15 @@ class SettingsController extends Controller
         }
 
         try {
-            $process = new \Symfony\Component\Process\Process($command, base_path());
-            $process->setTimeout(null);
-            $process->runInBackground();
+            $shellCommand = implode(' ', array_map('escapeshellarg', $command)).' > /dev/null 2>&1 & echo $!';
 
-            return back()->with($this->toast('Sync started. Progress is shown below.', 'success'));
+            $pid = shell_exec($shellCommand);
+
+            if ($pid === null) {
+                throw new \RuntimeException('shell_exec is disabled on this server.');
+            }
+
+            return back()->with($this->toast('Sync started (PID '.trim((string) $pid).'). Progress is shown below.', 'success'));
         } catch (\Throwable $e) {
             \App\Support\SyncProgress::fail($e->getMessage());
 
