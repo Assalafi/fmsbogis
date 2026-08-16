@@ -8,10 +8,15 @@ use chillerlan\QRCode\Output\QRGdImagePNG;
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions;
 use Barryvdh\DomPDF\Facade\Pdf;
-use NumberFormatter;
 
 class ReceiptPdfService
 {
+    /**
+     * Receipts are merged into a single PDF; larger sets are split
+     * into multiple PDF files of this many receipts each.
+     */
+    public const MERGE_CHUNK_SIZE = 100;
+
     /**
      * Generate the official BOGIS cash receipt PDF.
      */
@@ -24,25 +29,45 @@ class ReceiptPdfService
             'approver',
         ]);
 
-        [$amountInWords, $kobo] = $this->amountInWords((float) $receipt->amount);
-
         $receiptNo = $receipt->receipt_number ?? $receipt->treasury_receipt_voucher_number;
 
         $qrDataUri = $this->generateQr((string) $receiptNo);
 
-        $pdf = Pdf::loadView('pdf.cash-receipt', [
-            'receipt' => $receipt,
-            'amountInWords' => $amountInWords,
-            'kobo' => $kobo,
-            'qrDataUri' => $qrDataUri,
-        ])
-            ->setPaper('a4', 'portrait')
-            ->setOption('defaultMediaType', 'print')
-            ->setOption('isHtml5ParserEnabled', true)
-            ->setOption('isRemoteEnabled', false)
-            ->setOption('defaultFont', 'DejaVu Sans');
+        return $this->renderPdf($this->fullHtml($this->renderBody($receipt, $qrDataUri)));
+    }
 
-        return $pdf->output();
+    /**
+     * Merge many receipts into a single multi-page PDF (one receipt per page).
+     *
+     * @param  iterable<Receipt>  $receipts
+     */
+    public function generateMerged(iterable $receipts): string
+    {
+        $body = '';
+        $first = true;
+
+        foreach ($receipts as $receipt) {
+            if (! $first) {
+                $body .= '<div style="page-break-after: always;"></div>';
+            }
+            $first = false;
+
+            $receipt->load([
+                'account',
+                'economicCode',
+                'creator',
+                'approver',
+            ]);
+
+            $receiptNo = $receipt->receipt_number ?? $receipt->treasury_receipt_voucher_number;
+
+            // Local generation only: keeps bulk rendering fast and offline-safe.
+            $qrDataUri = $this->generateQrLocally((string) $receiptNo);
+
+            $body .= $this->renderBody($receipt, $qrDataUri);
+        }
+
+        return $this->renderPdf($this->fullHtml($body));
     }
 
     /**
@@ -53,6 +78,30 @@ class ReceiptPdfService
         $no = preg_replace('/[^A-Za-z0-9\-_]+/', '-', $receipt->treasury_receipt_voucher_number);
 
         return 'BOGIS-Cash-Receipt-'.$no.'.pdf';
+    }
+
+    protected function renderBody(Receipt $receipt, string $qrDataUri): string
+    {
+        return view('pdf.partials.cash-receipt-body', compact('receipt', 'qrDataUri'))->render();
+    }
+
+    protected function fullHtml(string $body): string
+    {
+        $styles = view('pdf.partials.cash-receipt-styles')->render();
+
+        return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>BOGIS Cash Receipt</title>'.$styles.'</head><body>'.$body.'</body></html>';
+    }
+
+    protected function renderPdf(string $html): string
+    {
+        $pdf = Pdf::loadHTML($html)
+            ->setPaper('a4', 'portrait')
+            ->setOption('defaultMediaType', 'print')
+            ->setOption('isHtml5ParserEnabled', true)
+            ->setOption('isRemoteEnabled', false)
+            ->setOption('defaultFont', 'DejaVu Sans');
+
+        return $pdf->output();
     }
 
     private function generateQr(string $data): string
@@ -106,28 +155,5 @@ class ReceiptPdfService
         } catch (\Throwable) {
             return null;
         }
-    }
-
-    private function amountInWords(float $amount): array
-    {
-        $naira = (int) floor($amount);
-        $kobo = (int) round(($amount - $naira) * 100);
-
-        if ($kobo >= 100) {
-            $naira++;
-            $kobo = 0;
-        }
-
-        $formatter = new NumberFormatter('en', NumberFormatter::SPELLOUT);
-        $nairaWords = ucwords($formatter->format($naira));
-
-        if ($kobo > 0) {
-            $koboWords = ucwords($formatter->format($kobo));
-            $words = $nairaWords.' Naira And '.$koboWords.' Kobo Only';
-        } else {
-            $words = $nairaWords.' Naira Only';
-        }
-
-        return [$words, $kobo];
     }
 }

@@ -59,25 +59,33 @@ class BulkDownloadReceipts extends Command
 
         $zip = new ZipStream(outputName: $zipName, outputStream: $stream, sendHttpHeaders: false);
 
+        $chunkSize = \App\Services\ReceiptPdfService::MERGE_CHUNK_SIZE;
+        $chunkCount = (int) ceil($total / $chunkSize);
+
+        $part = 0;
         $done = 0;
         $failed = 0;
 
         try {
-            $query->chunkById(50, function ($receipts) use (&$done, &$failed, $zip, $pdfService, $token, $total) {
-                foreach ($receipts as $receipt) {
-                    try {
-                        $pdf = $pdfService->generate($receipt);
+            // Each chunk of receipts is merged into a single multi-page PDF.
+            $query->chunkById($chunkSize, function ($receipts) use (&$part, &$done, &$failed, $zip, $pdfService, $token, $total, $chunkCount) {
+                $part++;
 
-                        $zip->addFile(fileName: $pdfService->filename($receipt), data: $pdf);
-                    } catch (\Throwable) {
-                        $failed++;
-                    }
+                try {
+                    $pdf = $pdfService->generateMerged($receipts);
 
-                    $done++;
-                    BulkDownloadProgress::update($token, $done, $failed);
-
-                    $this->line("{$done}/{$total} packed");
+                    $zip->addFile(
+                        fileName: sprintf('BOGIS-Receipts-Part-%02d-of-%02d.pdf', $part, $chunkCount),
+                        data: $pdf,
+                    );
+                } catch (\Throwable) {
+                    $failed += count($receipts);
                 }
+
+                $done += count($receipts);
+                BulkDownloadProgress::update($token, $done, $failed);
+
+                $this->line("{$done}/{$total} packed (part {$part}/{$chunkCount})");
             });
 
             $zip->finish();
@@ -87,7 +95,7 @@ class BulkDownloadReceipts extends Command
 
         BulkDownloadProgress::finish($token, $zipPath, $total, $failed);
 
-        $this->info("Done. {$total} receipts packed, {$failed} failed.");
+        $this->info("Done. {$total} receipts packed into {$chunkCount} file(s), {$failed} failed.");
 
         return self::SUCCESS;
     }

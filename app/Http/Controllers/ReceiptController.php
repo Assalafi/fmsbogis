@@ -253,11 +253,12 @@ class ReceiptController extends Controller
     }
 
     /**
-     * Build the ZIP and stream it directly to the browser (no disk usage).
+     * Build the bulk artifact and stream it directly to the browser.
+     * ≤100 receipts: one merged PDF. More: ZIP of merged 100-receipt PDFs.
      */
     protected function buildZipAndDownload($query, int $total)
     {
-        return $this->streamZip($query, $total, 'BOGIS-Receipts-'.now()->format('Ymd-His').'.zip');
+        return $this->streamBulk($query, $total, 'BOGIS-Receipts-'.now()->format('Ymd-His'));
     }
 
     /**
@@ -290,22 +291,26 @@ class ReceiptController extends Controller
 
         $state = \App\Support\BulkDownloadProgress::state($token);
 
-        $zipPath = null;
+        $storedFile = null;
+        $storedName = null;
 
         if ($state['status'] === 'done' && ! empty($state['zip_path'])) {
             $candidate = \Illuminate\Support\Facades\Storage::disk('local')->path($state['zip_path']);
 
             if (file_exists($candidate)) {
-                $zipPath = $candidate;
+                $storedFile = $candidate;
+                $storedName = str_ends_with($state['zip_path'], '.pdf')
+                    ? 'BOGIS-Receipts-'.$token.'.pdf'
+                    : 'BOGIS-Receipts-'.$token.'.zip';
             }
         }
 
-        if ($zipPath !== null) {
-            return response()->download($zipPath, 'BOGIS-Receipts-'.$token.'.zip')->deleteFileAfterSend(true);
+        if ($storedFile !== null) {
+            return response()->download($storedFile, $storedName)->deleteFileAfterSend(true);
         }
 
         // Regenerate and stream on demand.
-        return $this->streamZip($this->queryForBulk($bulk), $bulk->total, 'BOGIS-Receipts-'.$token.'.zip');
+        return $this->streamBulk($this->queryForBulk($bulk), $bulk->total, 'BOGIS-Receipts-'.$token);
     }
 
     protected function queryForBulk(\App\Models\BulkDownload $bulk)
@@ -327,36 +332,45 @@ class ReceiptController extends Controller
         return $this->applyIndexFilters($query, $request)->where('fiscal_year_id', $fiscalYearId);
     }
 
-    protected function streamZip($query, int $total, string $zipName)
+    /**
+     * Stream the bulk artifact:
+     * - ≤100 receipts → one merged multi-page PDF
+     * - more → ZIP containing merged PDFs of 100 receipts each
+     */
+    protected function streamBulk($query, int $total, string $namePrefix)
     {
         set_time_limit(0);
 
         $pdfService = app(\App\Services\ReceiptPdfService::class);
+        $chunkSize = \App\Services\ReceiptPdfService::MERGE_CHUNK_SIZE;
 
-        $failed = 0;
+        if ($total <= $chunkSize) {
+            return response()->streamDownload(function () use ($query, $pdfService) {
+                echo $pdfService->generateMerged($query->get());
+            }, $namePrefix.'.pdf', ['Content-Type' => 'application/pdf']);
+        }
 
-        $response = response()->streamDownload(function () use ($query, $pdfService, &$failed) {
+        $chunkCount = (int) ceil($total / $chunkSize);
+        $part = 0;
+
+        return response()->streamDownload(function () use ($query, $pdfService, $chunkSize, $chunkCount, &$part) {
             $zip = new \ZipStream\ZipStream(outputName: 'receipts.zip', sendHttpHeaders: false);
 
-            $query->chunkById(50, function ($receipts) use ($zip, $pdfService, &$failed) {
-                foreach ($receipts as $receipt) {
-                    try {
-                        $zip->addFile(fileName: $pdfService->filename($receipt), data: $pdfService->generate($receipt));
-                    } catch (\Throwable) {
-                        $failed++;
-                    }
+            $query->chunkById($chunkSize, function ($receipts) use ($zip, $pdfService, $chunkCount, &$part) {
+                $part++;
+
+                try {
+                    $zip->addFile(
+                        fileName: sprintf('BOGIS-Receipts-Part-%02d-of-%02d.pdf', $part, $chunkCount),
+                        data: $pdfService->generateMerged($receipts),
+                    );
+                } catch (\Throwable) {
+                    // skip failed chunk
                 }
             });
 
             $zip->finish();
-        }, $zipName);
-
-        app(AuditService::class)->log('Receipts Bulk Downloaded (regenerated)', null, null, [
-            'total' => $total,
-            'failed' => $failed,
-        ]);
-
-        return $response;
+        }, $namePrefix.'.zip');
     }
 
     protected function applyIndexFilters($query, Request $request)
