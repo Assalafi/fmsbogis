@@ -4,6 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Receipt;
 use Barryvdh\DomPDF\Facade\Pdf;
+use chillerlan\QRCode\Common\EccLevel;
+use chillerlan\QRCode\Output\QRGdImagePNG;
+use chillerlan\QRCode\QRCode;
+use chillerlan\QRCode\QROptions;
 use NumberFormatter;
 
 class BogisCashReceiptPdfController extends Controller
@@ -19,10 +23,15 @@ class BogisCashReceiptPdfController extends Controller
 
         [$amountInWords, $kobo] = $this->amountInWords((float) $receipt->amount);
 
+        $receiptNo = $receipt->receipt_number ?? $receipt->treasury_receipt_voucher_number;
+
+        $qrDataUri = $this->generateQr((string) $receiptNo);
+
         $pdf = Pdf::loadView('pdf.cash-receipt', [
             'receipt' => $receipt,
             'amountInWords' => $amountInWords,
             'kobo' => $kobo,
+            'qrDataUri' => $qrDataUri,
         ])
             ->setPaper('a4', 'portrait')
             ->setOption('isHtml5ParserEnabled', true)
@@ -32,6 +41,19 @@ class BogisCashReceiptPdfController extends Controller
         return $pdf->stream(
             'BOGIS-Cash-Receipt-' . $receipt->treasury_receipt_voucher_number . '.pdf'
         );
+    }
+
+    private function generateQr(string $data): string
+    {
+        $options = new QROptions([
+            'outputInterface' => QRGdImagePNG::class,
+            'eccLevel' => EccLevel::M,
+            'scale' => 6,
+            'margin' => 1,
+        ]);
+
+        // chillerlan v6 returns a ready-made data URI for image outputs.
+        return (new QRCode($options))->render($data);
     }
 
     private function amountInWords(float $amount): array

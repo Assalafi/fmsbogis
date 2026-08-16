@@ -589,6 +589,37 @@
 
         /*
         |--------------------------------------------------------------------------
+        | QR CODE (VERIFICATION)
+        |--------------------------------------------------------------------------
+        */
+
+        .qr-block {
+            margin-top: 3.5mm;
+
+            text-align: center;
+        }
+
+        .qr-block img {
+            width: 29mm;
+            height: 29mm;
+        }
+
+        .qr-label {
+            margin-top: 0.9mm;
+
+            font-family: DejaVu Serif, serif;
+            font-size: 6.3px;
+            font-weight: 700;
+
+            letter-spacing: 0.4px;
+
+            text-transform: uppercase;
+
+            color: #666;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
         | OPTIONAL SIDE INFORMATION
         |--------------------------------------------------------------------------
         */
@@ -1337,6 +1368,26 @@
                                 </div>
 
                             </div>
+
+
+                            @if(isset($qrDataUri) && $qrDataUri)
+
+                                <div class="qr-block">
+
+                                    <img
+                                        src="{{ $qrDataUri }}"
+                                        alt="Receipt QR"
+                                    >
+
+                                    <div class="qr-label">
+
+                                        Scan To Verify
+
+                                    </div>
+
+                                </div>
+
+                            @endif
 
 
                             @if(!empty($bankSlip))
