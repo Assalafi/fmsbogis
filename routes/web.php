@@ -171,6 +171,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::get('/', [SettingsController::class, 'index'])->name('index');
         Route::put('/', [SettingsController::class, 'update'])->name('update')->middleware('permission:settings.update');
         Route::post('sync-forms-payments', [SettingsController::class, 'syncFormsPayments'])->name('sync-forms-payments')->middleware('permission:settings.update');
+        Route::get('sync-progress', [SettingsController::class, 'syncProgress'])->name('sync-progress')->middleware('permission:settings.view');
     });
 
     // AJAX endpoints for forms

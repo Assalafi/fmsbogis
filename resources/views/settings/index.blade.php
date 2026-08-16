@@ -183,17 +183,21 @@
         <form method="POST" action="{{ route('settings.sync-forms-payments') }}" class="row g-3 align-items-end">
             @csrf
             <div class="col-md-3">
-                <label class="form-label fs-14">Only since (optional)</label>
+                <label class="form-label fs-14">From Date</label>
                 <input type="date" name="since" class="form-control" value="{{ now()->subDays(30)->format('Y-m-d') }}">
             </div>
             <div class="col-md-3">
-                <button type="submit" class="btn btn-success w-100"
+                <label class="form-label fs-14">To Date</label>
+                <input type="date" name="until" class="form-control" value="{{ now()->format('Y-m-d') }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-success w-100" id="sync-btn"
                     onclick="return confirm('Sync paid payments from BOGIS Forms? Duplicates will be skipped.');">
                     <i class="material-symbols-outlined align-middle fs-18">sync</i>
-                    Sync Paid Payments Now
+                    Sync Paid Payments
                 </button>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-3">
                 <small class="text-muted d-block">
                     API endpoint: <code>{{ url('api/v1/external/receipts') }}</code> ·
                     Forms API: <code>{{ config('services.bogis_forms.api_url') }}/api/paid-payments</code><br>
@@ -201,5 +205,94 @@
                 </small>
             </div>
         </form>
+
+        <div id="sync-progress-card" class="mt-4" style="display: none;">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <h6 class="mb-0" id="sync-status-text">Sync in progress…</h6>
+                <span class="badge bg-info" id="sync-percent-text">0%</span>
+            </div>
+            <div class="progress mb-3" style="height: 12px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" id="sync-progress-bar"
+                    role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <div class="row fs-14">
+                <div class="col-md-3"><span class="text-secondary">Page:</span> <strong id="sync-page">—</strong></div>
+                <div class="col-md-3"><span class="text-secondary">Created:</span> <strong id="sync-created" class="text-success">0</strong></div>
+                <div class="col-md-3"><span class="text-secondary">Existing:</span> <strong id="sync-existing" class="text-primary">0</strong></div>
+                <div class="col-md-3"><span class="text-secondary">Failed:</span> <strong id="sync-failed" class="text-danger">0</strong></div>
+            </div>
+            <div id="sync-message" class="alert alert-success mt-3 mb-0" style="display: none;"></div>
+        </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    const progressCard = document.getElementById('sync-progress-card');
+    const progressBar = document.getElementById('sync-progress-bar');
+    const percentText = document.getElementById('sync-percent-text');
+    const statusText = document.getElementById('sync-status-text');
+    const messageBox = document.getElementById('sync-message');
+    const syncBtn = document.getElementById('sync-btn');
+    let timer = null;
+
+    function render(state) {
+        progressCard.style.display = 'block';
+        progressBar.style.width = state.percent + '%';
+        progressBar.setAttribute('aria-valuenow', state.percent);
+        percentText.textContent = state.percent + '%';
+        document.getElementById('sync-page').textContent = state.page || '—';
+        document.getElementById('sync-created').textContent = state.created;
+        document.getElementById('sync-existing').textContent = state.existing;
+        document.getElementById('sync-failed').textContent = state.failed;
+
+        if (state.status === 'running') {
+            statusText.textContent = 'Sync in progress…';
+            messageBox.style.display = 'none';
+            syncBtn.disabled = true;
+        } else if (state.status === 'done') {
+            statusText.textContent = 'Sync finished';
+            progressBar.classList.remove('progress-bar-animated');
+            progressBar.classList.add('bg-success');
+            syncBtn.disabled = false;
+            messageBox.style.display = 'block';
+            messageBox.className = 'alert alert-success mt-3 mb-0';
+            messageBox.textContent = state.message;
+            clearInterval(timer);
+            timer = null;
+        } else if (state.status === 'error') {
+            statusText.textContent = 'Sync failed';
+            progressBar.classList.remove('progress-bar-animated');
+            progressBar.classList.remove('bg-success');
+            progressBar.classList.add('bg-danger');
+            syncBtn.disabled = false;
+            messageBox.style.display = 'block';
+            messageBox.className = 'alert alert-danger mt-3 mb-0';
+            messageBox.textContent = state.message;
+            clearInterval(timer);
+            timer = null;
+        } else {
+            statusText.textContent = 'No active sync';
+        }
+    }
+
+    function poll() {
+        fetch('{{ route('settings.sync-progress') }}', {
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin',
+        })
+        .then(r => r.json())
+        .then(state => {
+            render(state);
+            if ((state.status === 'running') && !timer) {
+                timer = setInterval(poll, 2000);
+            }
+        })
+        .catch(() => {});
+    }
+
+    poll();
+})();
+</script>
+@endpush

@@ -155,11 +155,12 @@ class ExternalReceiptService
     }
 
     /**
-     * Pull all paid payments from BOGIS Forms and create missing receipts.
+     * Pull paid payments from BOGIS Forms (optionally within a date range) and create missing receipts.
      *
+     * @param  \Closure|null  $onPage  Callback(page, created, existing, failed, total)
      * @return array{created: int, existing: int, failed: int}
      */
-    public function syncFromForms(?string $since = null): array
+    public function syncFromForms(?string $since = null, ?string $until = null, ?\Closure $onPage = null): array
     {
         $baseUrl = rtrim((string) config('services.bogis_forms.api_url'), '/');
         $token = (string) config('services.bogis_forms.api_token');
@@ -172,14 +173,16 @@ class ExternalReceiptService
         $existing = 0;
         $failed = 0;
         $page = 1;
+        $total = null;
 
         do {
             $response = \Illuminate\Support\Facades\Http::withToken($token)
                 ->acceptJson()
-                ->timeout(30)
+                ->timeout(60)
                 ->get("{$baseUrl}/api/paid-payments", [
                     'page' => $page,
                     'since' => $since,
+                    'until' => $until,
                 ]);
 
             if ($response->failed()) {
@@ -188,6 +191,7 @@ class ExternalReceiptService
 
             $json = $response->json();
             $payments = $json['data'] ?? [];
+            $total = $json['total'] ?? $total;
 
             foreach ($payments as $payment) {
                 try {
@@ -197,6 +201,10 @@ class ExternalReceiptService
                 } catch (\Throwable) {
                     $failed++;
                 }
+            }
+
+            if ($onPage) {
+                $onPage($page, $created, $existing, $failed, $total);
             }
 
             $page++;

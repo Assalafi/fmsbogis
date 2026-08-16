@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\EconomicCode;
 use App\Models\Setting;
-use App\Services\ExternalReceiptService;
 use Illuminate\Http\Request;
 
 class SettingsController extends Controller
@@ -60,22 +59,66 @@ class SettingsController extends Controller
     }
 
     /**
-     * Manually sync already-paid payments from BOGIS Forms into receipts.
+     * Start a background sync of paid payments from BOGIS Forms into receipts.
      */
-    public function syncFormsPayments(Request $request, ExternalReceiptService $service)
+    public function syncFormsPayments(Request $request)
     {
         $data = $request->validate([
             'since' => ['nullable', 'date'],
+            'until' => ['nullable', 'date', 'after_or_equal:since'],
         ]);
 
-        try {
-            $result = $service->syncFromForms($data['since'] ?? null);
-        } catch (\Throwable $e) {
-            return back()->with($this->toast($e->getMessage(), 'danger'));
+        if (\App\Support\SyncProgress::isRunning()) {
+            return back()->with($this->toast('A sync is already running. Please wait for it to finish.', 'warning'));
         }
 
-        $message = "Sync complete. Created: {$result['created']}, already existing: {$result['existing']}, failed: {$result['failed']}.";
+        \App\Support\SyncProgress::start($data['since'] ?? null, $data['until'] ?? null);
 
-        return back()->with($this->toast($message, $result['failed'] > 0 ? 'warning' : 'success'));
+        $command = [
+            PHP_BINARY,
+            base_path('artisan'),
+            'receipts:sync-from-forms',
+        ];
+
+        if (! empty($data['since'])) {
+            $command[] = '--since='.$data['since'];
+        }
+
+        if (! empty($data['until'])) {
+            $command[] = '--until='.$data['until'];
+        }
+
+        try {
+            $process = new \Symfony\Component\Process\Process($command, base_path());
+            $process->setTimeout(null);
+            $process->runInBackground();
+
+            return back()->with($this->toast('Sync started. Progress is shown below.', 'success'));
+        } catch (\Throwable $e) {
+            \App\Support\SyncProgress::fail($e->getMessage());
+
+            return back()->with($this->toast('Could not start sync: '.$e->getMessage(), 'danger'));
+        }
+    }
+
+    /**
+     * JSON endpoint for the sync progress UI.
+     */
+    public function syncProgress()
+    {
+        $state = \App\Support\SyncProgress::state();
+
+        return response()->json([
+            'status' => $state['status'],
+            'page' => $state['page'],
+            'created' => $state['created'],
+            'existing' => $state['existing'],
+            'failed' => $state['failed'],
+            'total' => $state['total'],
+            'percent' => \App\Support\SyncProgress::percent(),
+            'started_at' => $state['started_at'],
+            'finished_at' => $state['finished_at'],
+            'message' => $state['message'],
+        ]);
     }
 }
