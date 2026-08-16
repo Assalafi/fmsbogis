@@ -42,6 +42,7 @@ return [
 
     'external_receipts' => [
         'api_token' => env('EXTERNAL_RECEIPT_API_TOKEN', 'bogis-finance-receipt-token'),
+        'php_binary' => env('PHP_CLI_BINARY', 'php8.3'),
     ],
 
 ];

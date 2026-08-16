@@ -75,7 +75,7 @@ class SettingsController extends Controller
         \App\Support\SyncProgress::start($data['since'] ?? null, $data['until'] ?? null);
 
         $command = [
-            PHP_BINARY,
+            (string) config('services.external_receipts.php_binary', 'php8.3'),
             base_path('artisan'),
             'receipts:sync-from-forms',
         ];
