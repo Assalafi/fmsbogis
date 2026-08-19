@@ -104,7 +104,7 @@
             text-align: center;
             color: #07582b;
             font-family: Helvetica, Arial, sans-serif;
-            font-size: 11.2pt;
+            font-size: 13pt;
             font-weight: bold;
             line-height: 1.08;
         }
@@ -116,7 +116,7 @@
             width: 130mm;
             text-align: center;
             color: #222;
-            font-size: 6.8pt;
+            font-size: 8.2pt;
             line-height: 1.25;
         }
 
@@ -127,7 +127,7 @@
             width: 130mm;
             text-align: center;
             color: #222;
-            font-size: 6.6pt;
+            font-size: 8pt;
         }
 
         .org-email strong {
@@ -157,7 +157,7 @@
             width: 34mm;
             height: 5mm;
             font-family: Times, "Times New Roman", serif;
-            font-size: 9.4pt;
+            font-size: 11pt;
             font-weight: bold;
             font-style: italic;
             line-height: 5mm;
@@ -171,9 +171,10 @@
             border-bottom: 0.35mm dotted #222;
             padding: 0 1mm 0.9mm 1mm;
             font-family: Helvetica, Arial, sans-serif;
-            font-size: 8.3pt;
+            font-size: 9.8pt;
             font-weight: bold;
             line-height: 4.4mm;
+            text-align: center;
         }
 
         .field-received-label { top: 49mm; }
@@ -216,7 +217,7 @@
             width: 34mm;
             text-align: right;
             color: #777;
-            font-size: 5.4pt;
+            font-size: 6.5pt;
             font-weight: bold;
             letter-spacing: 0.6pt;
             text-transform: uppercase;
@@ -231,9 +232,9 @@
             border: 0.35mm solid #08743a;
             background: #f6fbf7;
             color: #07602f;
-            text-align: right;
+            text-align: center;
             padding: 1.4mm 2mm 0 2mm;
-            font-size: 11.5pt;
+            font-size: 13pt;
             font-weight: bold;
         }
 
