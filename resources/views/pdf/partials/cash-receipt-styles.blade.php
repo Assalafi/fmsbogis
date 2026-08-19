@@ -272,7 +272,7 @@
             position: absolute;
             height: 5mm;
             font-family: Times, "Times New Roman", serif;
-            font-size: 8.2pt;
+            font-size: 9.5pt;
             font-weight: bold;
             font-style: italic;
             line-height: 5mm;
@@ -285,7 +285,7 @@
             border-bottom: 0.3mm solid #222;
             text-align: center;
             font-family: Helvetica, Arial, sans-serif;
-            font-size: 6.5pt;
+            font-size: 8pt;
             line-height: 4.2mm;
         }
 
@@ -295,11 +295,11 @@
         .payer-phone-label { left: 37mm; top: 119mm; }
         .payer-phone-line  { left: 67mm; top: 119mm; width: 35mm; }
 
-        .collector-label { left: 108mm; top: 108mm; }
-        .collector-line  { left: 137mm; top: 108mm; width: 15mm; }
+        .collector-label { left: 103mm; top: 108mm; }
+        .collector-line  { left: 137mm; top: 108mm; width: 18mm; }
 
-        .date-label { left: 108mm; top: 119mm; }
-        .date-line  { left: 137mm; top: 119mm; width: 15mm; }
+        .date-label { left: 103mm; top: 119mm; }
+        .date-line  { left: 137mm; top: 119mm; width: 18mm; }
 
         /* Right control panel */
         .right-divider {
