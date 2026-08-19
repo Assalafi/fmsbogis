@@ -81,6 +81,7 @@ class ExternalReceiptService
                 'external_source' => 'bogis-forms',
                 'from_whom_received_to_whom_paid' => $payment['customer_name'] ?? null,
                 'payer_phone' => $payment['customer_phone'] ?? null,
+                'payer_email' => $payment['customer_email'] ?? null,
                 'payment_method' => 'bank',
                 'details' => $this->buildDetails($payment),
                 'status' => 'pending',
