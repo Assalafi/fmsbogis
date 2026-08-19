@@ -34,16 +34,19 @@
     }
 
     /*
-     * Application fee payments are shown simply as "Application Fee".
-     * Plot premium / allocation fee payments keep their plot details
-     * (scheme, block and plot number).
+     * Application fee payments (including land use fees) are shown simply
+     * as "Application Fee". Plot premium / allocation fee payments keep
+     * their plot details (scheme, block and plot number).
      */
-    if (stripos($feeType, 'Application Fee') !== false) {
-        $paymentFor = 'Application Fee';
-    } else {
+    $isPremium = stripos($feeType, 'Allocation Fee') !== false
+        || stripos($feeType, 'Plot Premium') !== false;
+
+    if ($isPremium) {
         $paymentFor = $feeType !== ''
             ? $feeType
             : (string) (optional($receipt->economicCode)->name ?? '');
+    } else {
+        $paymentFor = 'Application Fee';
     }
 
     $amount = round((float) $receipt->amount, 2);
