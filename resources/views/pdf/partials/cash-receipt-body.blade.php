@@ -127,6 +127,14 @@
         : ($rvLength > 17 ? 'small' : '');
 
     $copies = ['BOGIS COPY', "PAYER'S COPY"];
+
+    // When $singleCopy is true, only the PAYER'S COPY is rendered
+    // (used for applicant downloads).
+    $singleCopy = $singleCopy ?? false;
+
+    if ($singleCopy) {
+        $copies = ["PAYER'S COPY"];
+    }
 @endphp
 
 <div class="sheet">
@@ -245,7 +253,7 @@
             </div>
         </div>
 
-        @if($index === 0)
+        @if($index === 0 && ! $singleCopy)
             <div class="cut-area">
                 <span>CUT HERE &nbsp; • &nbsp; BOGIS COPY / PAYER'S COPY</span>
             </div>

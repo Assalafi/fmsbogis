@@ -103,7 +103,8 @@ class ExternalReceiptController extends Controller
 
         abort_unless($receipt, 404, 'Receipt not found.');
 
-        $pdf = app(ReceiptPdfService::class)->generate($receipt);
+        // Applicants get only the PAYER'S COPY.
+        $pdf = app(ReceiptPdfService::class)->generatePayerCopy($receipt);
 
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',

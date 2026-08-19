@@ -18,7 +18,7 @@ class ReceiptPdfService
     public const MERGE_CHUNK_SIZE = 100;
 
     /**
-     * Generate the official BOGIS cash receipt PDF.
+     * Generate the official BOGIS cash receipt PDF (BOGIS + PAYER copies).
      */
     public function generate(Receipt $receipt): string
     {
@@ -33,7 +33,27 @@ class ReceiptPdfService
 
         $qrDataUri = $this->generateQr((string) $receiptNo);
 
-        return $this->renderPdf($this->fullHtml($this->renderBody($receipt, $qrDataUri)));
+        return $this->renderPdf($this->fullHtml($this->renderBody($receipt, $qrDataUri, false)));
+    }
+
+    /**
+     * Generate a single-copy receipt PDF with only the PAYER'S COPY.
+     * Used for applicant downloads.
+     */
+    public function generatePayerCopy(Receipt $receipt): string
+    {
+        $receipt->load([
+            'account',
+            'economicCode',
+            'creator',
+            'approver',
+        ]);
+
+        $receiptNo = $receipt->receipt_number ?? $receipt->treasury_receipt_voucher_number;
+
+        $qrDataUri = $this->generateQr((string) $receiptNo);
+
+        return $this->renderPdf($this->fullHtml($this->renderBody($receipt, $qrDataUri, true)));
     }
 
     /**
@@ -80,9 +100,9 @@ class ReceiptPdfService
         return 'BOGIS-Cash-Receipt-'.$no.'.pdf';
     }
 
-    protected function renderBody(Receipt $receipt, string $qrDataUri): string
+    protected function renderBody(Receipt $receipt, string $qrDataUri, bool $singleCopy = false): string
     {
-        return view('pdf.partials.cash-receipt-body', compact('receipt', 'qrDataUri'))->render();
+        return view('pdf.partials.cash-receipt-body', compact('receipt', 'qrDataUri', 'singleCopy'))->render();
     }
 
     protected function fullHtml(string $body): string
