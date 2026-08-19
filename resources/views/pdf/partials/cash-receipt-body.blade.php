@@ -24,9 +24,27 @@
         ?? optional($receipt->creator)->name
         ?? '';
 
-    $paymentFor = $receipt->details
-        ?? optional($receipt->economicCode)->name
-        ?? '';
+    $feeType = (string) ($receipt->details ?? '');
+
+    /*
+     * Normalize the legacy "Imported from BOGIS Forms — X (CARD payment)..." format.
+     */
+    if (preg_match('/Imported from BOGIS Forms — (.*?) \([A-Z]+ payment\)/u', $feeType, $m)) {
+        $feeType = trim($m[1]);
+    }
+
+    /*
+     * Application fee payments are shown simply as "Application Fee".
+     * Plot premium / allocation fee payments keep their plot details
+     * (scheme, block and plot number).
+     */
+    if (stripos($feeType, 'Application Fee') !== false) {
+        $paymentFor = 'Application Fee';
+    } else {
+        $paymentFor = $feeType !== ''
+            ? $feeType
+            : (string) (optional($receipt->economicCode)->name ?? '');
+    }
 
     $amount = round((float) $receipt->amount, 2);
     $wholeNaira = (int) floor($amount);
