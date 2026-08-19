@@ -253,7 +253,7 @@
             </div>
         </div>
 
-        @if($index === 0 && ! $singleCopy)
+        @if($index === 0)
             <div class="cut-area">
                 <span>CUT HERE &nbsp; • &nbsp; BOGIS COPY / PAYER'S COPY</span>
             </div>
