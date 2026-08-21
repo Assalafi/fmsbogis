@@ -37,6 +37,7 @@
                     <option value="">All</option>
                     <option value="capital" {{ request('account_type') === 'capital' ? 'selected' : '' }}>Capital</option>
                     <option value="overhead" {{ request('account_type') === 'overhead' ? 'selected' : '' }}>Overhead</option>
+                <option value="personnel" {{ request('account_type') === 'personnel' ? 'selected' : '' }}>Personnel</option>
                 </select>
             </div>
             <div class="col-md-2">

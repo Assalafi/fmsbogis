@@ -34,6 +34,10 @@ class PerformanceService
             ->whereHas('economicCode', fn ($q) => $q->where('account_type', 'overhead'))
             ->sum('amount'));
 
+        $personnelPayments = Money::normalize(Payment::where('fiscal_year_id', $fiscalYear->id)->where('status', 'paid')
+            ->whereHas('economicCode', fn ($q) => $q->where('account_type', 'personnel'))
+            ->sum('amount'));
+
         $cashbookBalance = Money::normalize(Account::all()->sum(fn (Account $account) => resolve(CashbookService::class)->closingBalance($account, $fiscalYear)));
 
         $approvedUnpaid = Money::normalize(Payment::where('fiscal_year_id', $fiscalYear->id)->where('status', 'approved')->sum('amount'));
@@ -46,6 +50,7 @@ class PerformanceService
             'available_budget' => Money::sub($revised, Money::add($payments, $approvedUnpaid)),
             'capital_payments' => $capitalPayments,
             'overhead_payments' => $overheadPayments,
+            'personnel_payments' => $personnelPayments,
             'cashbook_balance' => $cashbookBalance,
         ];
     }

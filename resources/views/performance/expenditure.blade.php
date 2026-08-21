@@ -28,6 +28,7 @@
                     <option value="">All Types</option>
                     <option value="capital" {{ request('account_type') === 'capital' ? 'selected' : '' }}>Capital</option>
                     <option value="overhead" {{ request('account_type') === 'overhead' ? 'selected' : '' }}>Overhead</option>
+                <option value="personnel" {{ request('account_type') === 'personnel' ? 'selected' : '' }}>Personnel</option>
                 </select>
             </div>
         </form>
@@ -54,7 +55,7 @@
                         <tr>
                             <td class="fw-medium">{{ $row['code']->code }}</td>
                             <td>{{ $row['code']->name }}</td>
-                            <td><span class="badge bg-{{ $row['code']->account_type === 'capital' ? 'dark' : 'info' }}">{{ ucfirst($row['code']->account_type) }}</span></td>
+                            <td><span class="badge bg-{{ \App\Support\AccountTypes::badgeColor($row['code']->account_type) }}">{{ ucfirst($row['code']->account_type) }}</span></td>
                             <td class="text-end">₦{{ number_format((float) $row['original'], 2) }}</td>
                             <td class="text-end">₦{{ number_format((float) $row['revised'], 2) }}</td>
                             <td class="text-end text-danger">₦{{ number_format((float) $row['paid'], 2) }}</td>

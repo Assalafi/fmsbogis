@@ -34,6 +34,7 @@
                     <select name="account_type" class="form-select" required>
                         <option value="capital" {{ old('account_type', $account->account_type) === 'capital' ? 'selected' : '' }}>Capital</option>
                         <option value="overhead" {{ old('account_type', $account->account_type) === 'overhead' ? 'selected' : '' }}>Overhead</option>
+                <option value="personnel" {{ old('account_type', $account->account_type) === 'personnel' ? 'selected' : '' }}>Personnel</option>
                     </select>
                 </div>
                 <div class="col-md-6">

@@ -24,10 +24,11 @@
         </div>
 
         <div class="row">
-            <x-stat-card label="AVAILABLE BUDGET" value="₦{{ number_format((float) $totals['available_budget'], 2) }}" icon="savings" color="warning" />
-            <x-stat-card label="CAPITAL PAYMENTS" value="₦{{ number_format((float) $totals['capital_payments'], 2) }}" icon="apartment" color="dark" />
-            <x-stat-card label="OVERHEAD PAYMENTS" value="₦{{ number_format((float) $totals['overhead_payments'], 2) }}" icon="storefront" color="secondary" />
-            <x-stat-card label="CASHBOOK BALANCE" value="₦{{ number_format((float) $totals['cashbook_balance'], 2) }}" icon="account_balance" color="success" />
+        <x-stat-card label="AVAILABLE BUDGET" value="₦{{ number_format((float) $totals['available_budget'], 2) }}" icon="savings" color="warning" />
+        <x-stat-card label="CAPITAL PAYMENTS" value="₦{{ number_format((float) $totals['capital_payments'], 2) }}" icon="apartment" color="dark" />
+        <x-stat-card label="OVERHEAD PAYMENTS" value="₦{{ number_format((float) $totals['overhead_payments'], 2) }}" icon="storefront" color="secondary" />
+        <x-stat-card label="PERSONNEL PAYMENTS" value="₦{{ number_format((float) $totals['personnel_payments'], 2) }}" icon="badge" color="warning" />
+        <x-stat-card label="CASHBOOK BALANCE" value="₦{{ number_format((float) $totals['cashbook_balance'], 2) }}" icon="account_balance" color="success" />
         </div>
 
         <div class="row">

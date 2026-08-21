@@ -39,6 +39,7 @@
                         <option value="">Select Account Type</option>
                         <option value="capital" {{ old('account_type') === 'capital' ? 'selected' : '' }}>Capital</option>
                         <option value="overhead" {{ old('account_type') === 'overhead' ? 'selected' : '' }}>Overhead</option>
+                <option value="personnel" {{ old('account_type') === 'personnel' ? 'selected' : '' }}>Personnel</option>
                     </select>
                     <small class="text-muted">Only required for Expense Economic Codes.</small>
                 </div>

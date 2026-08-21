@@ -20,6 +20,7 @@
                     <option value="">All Types</option>
                     <option value="capital" {{ request('account_type') === 'capital' ? 'selected' : '' }}>Capital</option>
                     <option value="overhead" {{ request('account_type') === 'overhead' ? 'selected' : '' }}>Overhead</option>
+                <option value="personnel" {{ request('account_type') === 'personnel' ? 'selected' : '' }}>Personnel</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -67,7 +68,7 @@
                             </td>
                             <td>{{ $account->bank_name }}</td>
                             <td>{{ substr($account->account_number, 0, 2) }}****{{ substr($account->account_number, -4) }}</td>
-                            <td><span class="badge bg-{{ $account->account_type === 'capital' ? 'dark' : 'info' }}">{{ ucfirst($account->account_type) }}</span></td>
+                            <td><span class="badge bg-{{ \App\Support\AccountTypes::badgeColor($account->account_type) }}">{{ ucfirst($account->account_type) }}</span></td>
                             <td class="text-end">₦{{ number_format((float) $account->opening_balance, 2) }}</td>
                             <td>@include('components.status-badge', ['status' => $account->status])</td>
                             <td>

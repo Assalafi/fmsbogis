@@ -38,6 +38,7 @@
                         <option value="">Select Account Type</option>
                         <option value="capital" {{ old('account_type', $economicCode->account_type) === 'capital' ? 'selected' : '' }}>Capital</option>
                         <option value="overhead" {{ old('account_type', $economicCode->account_type) === 'overhead' ? 'selected' : '' }}>Overhead</option>
+                <option value="personnel" {{ old('account_type', $economicCode->account_type) === 'personnel' ? 'selected' : '' }}>Personnel</option>
                     </select>
                 </div>
                 <div class="col-md-6">

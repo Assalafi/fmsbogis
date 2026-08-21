@@ -149,6 +149,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::get('economic-codes', [PerformanceController::class, 'economicCodes'])->name('economic-codes');
         Route::get('capital', [PerformanceController::class, 'capital'])->name('capital');
         Route::get('overhead', [PerformanceController::class, 'overhead'])->name('overhead');
+        Route::get('personnel', [PerformanceController::class, 'personnel'])->name('personnel');
         Route::get('accounts', [PerformanceController::class, 'accounts'])->name('accounts');
     });
 

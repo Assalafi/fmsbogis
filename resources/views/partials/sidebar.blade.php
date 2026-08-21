@@ -171,6 +171,9 @@
                         <a href="{{ route('performance.overhead') }}" class="menu-link">Overhead Performance</a>
                     </li>
                     <li class="menu-item">
+                        <a href="{{ route('performance.personnel') }}" class="menu-link">Personnel Performance</a>
+                    </li>
+                    <li class="menu-item">
                         <a href="{{ route('performance.accounts') }}" class="menu-link">Account Performance</a>
                     </li>
                 </ul>

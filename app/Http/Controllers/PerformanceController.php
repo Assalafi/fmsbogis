@@ -86,6 +86,11 @@ class PerformanceController extends Controller
         return $this->byAccountType('overhead');
     }
 
+    public function personnel()
+    {
+        return $this->byAccountType('personnel');
+    }
+
     protected function byAccountType(string $accountType)
     {
         $fiscalYear = ActiveFiscalYear::get();

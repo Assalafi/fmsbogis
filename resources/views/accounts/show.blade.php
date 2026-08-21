@@ -26,7 +26,7 @@
                         <tr><th class="ps-0 fs-14 text-secondary" style="width: 45%;">Account Name</th><td class="pe-0 fw-medium">{{ $account->account_name }}</td></tr>
                         <tr><th class="ps-0 fs-14 text-secondary">Bank Name</th><td class="pe-0">{{ $account->bank_name }}</td></tr>
                         <tr><th class="ps-0 fs-14 text-secondary">Account Number</th><td class="pe-0">{{ $account->account_number }}</td></tr>
-                        <tr><th class="ps-0 fs-14 text-secondary">Account Type</th><td class="pe-0"><span class="badge bg-{{ $account->account_type === 'capital' ? 'dark' : 'info' }}">{{ ucfirst($account->account_type) }}</span></td></tr>
+                        <tr><th class="ps-0 fs-14 text-secondary">Account Type</th><td class="pe-0"><span class="badge bg-{{ \App\Support\AccountTypes::badgeColor($account->account_type) }}">{{ ucfirst($account->account_type) }}</span></td></tr>
                         <tr><th class="ps-0 fs-14 text-secondary">Status</th><td class="pe-0">@include('components.status-badge', ['status' => $account->status])</td></tr>
                         <tr><th class="ps-0 fs-14 text-secondary">Created At</th><td class="pe-0">{{ $account->created_at->format('d M Y H:i') }}</td></tr>
                     </tbody>

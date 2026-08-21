@@ -37,6 +37,7 @@
                         <option value="">Select Type</option>
                         <option value="capital" {{ old('account_type') === 'capital' ? 'selected' : '' }}>Capital</option>
                         <option value="overhead" {{ old('account_type') === 'overhead' ? 'selected' : '' }}>Overhead</option>
+                <option value="personnel" {{ old('account_type') === 'personnel' ? 'selected' : '' }}>Personnel</option>
                     </select>
                     @error('account_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     <small class="text-muted">Capital Payments can only use Capital Accounts. Overhead Payments can only use Overhead Accounts.</small>

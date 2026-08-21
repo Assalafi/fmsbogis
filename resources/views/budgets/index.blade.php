@@ -32,6 +32,7 @@
                     <option value="">All</option>
                     <option value="capital" {{ request('account_type') === 'capital' ? 'selected' : '' }}>Capital</option>
                     <option value="overhead" {{ request('account_type') === 'overhead' ? 'selected' : '' }}>Overhead</option>
+                <option value="personnel" {{ request('account_type') === 'personnel' ? 'selected' : '' }}>Personnel</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -77,7 +78,7 @@
                                 </a>
                                 <div class="fs-13 text-secondary">{{ $budget->economicCode->name }}</div>
                             </td>
-                            <td><span class="badge bg-{{ $budget->economicCode->account_type === 'capital' ? 'dark' : 'info' }}">{{ ucfirst($budget->economicCode->account_type) }}</span></td>
+                            <td><span class="badge bg-{{ \App\Support\AccountTypes::badgeColor($budget->economicCode->account_type) }}">{{ ucfirst($budget->economicCode->account_type) }}</span></td>
                             <td class="text-end">₦{{ number_format((float) $budget->original_budget, 2) }}</td>
                             <td class="text-end">₦{{ number_format((float) $budget->supplementary_budget, 2) }}</td>
                             <td class="text-end">₦{{ number_format((float) $budget->virement_in, 2) }}</td>

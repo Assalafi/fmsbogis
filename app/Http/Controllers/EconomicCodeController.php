@@ -53,7 +53,7 @@ class EconomicCodeController extends Controller
             'code' => ['required', 'string', 'max:50', 'unique:economic_codes,code'],
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'in:revenue,expense'],
-            'account_type' => ['nullable', 'in:capital,overhead'],
+            'account_type' => ['nullable', 'in:capital,overhead,personnel'],
             'description' => ['nullable', 'string'],
             'status' => ['required', 'in:active,inactive'],
         ]);
@@ -94,7 +94,7 @@ class EconomicCodeController extends Controller
             'code' => ['required', 'string', 'max:50', 'unique:economic_codes,code,'.$economicCode->id],
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'in:revenue,expense'],
-            'account_type' => ['nullable', 'in:capital,overhead'],
+            'account_type' => ['nullable', 'in:capital,overhead,personnel'],
             'description' => ['nullable', 'string'],
             'status' => ['required', 'in:active,inactive'],
         ]);
@@ -145,7 +145,7 @@ class EconomicCodeController extends Controller
     {
         $data = $request->validate([
             'type' => ['required', 'in:revenue,expense'],
-            'account_type' => ['nullable', 'in:capital,overhead'],
+            'account_type' => ['nullable', 'in:capital,overhead,personnel'],
             'status' => ['required', 'in:active,inactive'],
             'file' => ['required', 'file', 'mimes:csv,xlsx,xls,txt', 'max:5120'],
         ]);

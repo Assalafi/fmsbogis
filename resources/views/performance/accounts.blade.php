@@ -30,7 +30,7 @@
                             <td>
                                 <a href="{{ route('accounts.show', $row['account']) }}" class="text-decoration-none fw-medium">{{ $row['account']->account_name }}</a>
                             </td>
-                            <td><span class="badge bg-{{ $row['account']->account_type === 'capital' ? 'dark' : 'info' }}">{{ ucfirst($row['account']->account_type) }}</span></td>
+                            <td><span class="badge bg-{{ \App\Support\AccountTypes::badgeColor($row['account']->account_type) }}">{{ ucfirst($row['account']->account_type) }}</span></td>
                             <td class="text-end">₦{{ number_format((float) $row['opening'], 2) }}</td>
                             <td class="text-end text-success">₦{{ number_format((float) $row['receipts'], 2) }}</td>
                             <td class="text-end text-danger">₦{{ number_format((float) $row['payments'], 2) }}</td>

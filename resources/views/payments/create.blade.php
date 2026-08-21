@@ -130,7 +130,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const selectedOption = accountSelect.selectedOptions[0];
-        badgeDiv.innerHTML = '<span class="badge bg-' + (selectedOption.dataset.accountType === 'capital' ? 'dark' : 'info') + '">' + selectedOption.dataset.accountType.toUpperCase() + ' ACCOUNT</span>';
+        const badgeColor = selectedOption.dataset.accountType === 'capital' ? 'dark' : (selectedOption.dataset.accountType === 'personnel' ? 'warning' : 'info');
+        badgeDiv.innerHTML = '<span class="badge bg-' + badgeColor + '">' + selectedOption.dataset.accountType.toUpperCase() + ' ACCOUNT</span>';
 
         fetch('{{ url('api/economic-codes/payment') }}?account_id=' + accountId, {
             headers: { 'Accept': 'application/json' },

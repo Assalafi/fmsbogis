@@ -47,7 +47,7 @@ class AccountController extends Controller
             'account_name' => ['required', 'string', 'max:255'],
             'bank_name' => ['required', 'string', 'max:255'],
             'account_number' => ['required', 'string', 'max:50'],
-            'account_type' => ['required', 'in:capital,overhead'],
+            'account_type' => ['required', 'in:capital,overhead,personnel'],
             'opening_balance' => ['required', 'numeric', 'min:0'],
             'status' => ['required', 'in:active,inactive'],
         ]);
@@ -85,7 +85,7 @@ class AccountController extends Controller
             'account_name' => ['required', 'string', 'max:255'],
             'bank_name' => ['required', 'string', 'max:255'],
             'account_number' => ['required', 'string', 'max:50'],
-            'account_type' => ['required', 'in:capital,overhead'],
+            'account_type' => ['required', 'in:capital,overhead,personnel'],
             'opening_balance' => ['required', 'numeric', 'min:0'],
             'status' => ['required', 'in:active,inactive'],
         ]);
