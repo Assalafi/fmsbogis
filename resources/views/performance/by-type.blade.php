@@ -3,7 +3,16 @@
 @section('title', ucfirst($accountType).' Performance')
 
 @section('content')
-    <x-page-header title="{{ ucfirst($accountType) }} Performance" :breadcrumbs="['Performance' => null, ucfirst($accountType) => null]" />
+    <x-page-header title="{{ ucfirst($accountType) }} Performance" :breadcrumbs="['Performance' => null, ucfirst($accountType) => null]">
+        <a href="{{ request()->fullUrlWithQuery(['export' => 'excel']) }}" class="btn btn-success">
+            <i class="material-symbols-outlined align-middle fs-18">download</i>
+            Excel
+        </a>
+        <a href="{{ request()->fullUrlWithQuery(['export' => 'pdf']) }}" class="btn btn-secondary" target="_blank">
+            <i class="material-symbols-outlined align-middle fs-18">picture_as_pdf</i>
+            PDF
+        </a>
+    </x-page-header>
 
     @php
         $totalBudget = $codes->sum(function ($c) { return (float) $c['total']; });

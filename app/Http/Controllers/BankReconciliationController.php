@@ -7,10 +7,12 @@ use App\Models\BankReconciliation;
 use App\Models\BankReconciliationItem;
 use App\Models\BankStatement;
 use App\Models\CashbookEntry;
+use App\Exports\ArrayExport;
 use App\Services\ReconciliationService;
 use App\Support\Money;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class BankReconciliationController extends Controller
 {
@@ -210,5 +212,39 @@ class BankReconciliationController extends Controller
         $pdf = Pdf::loadView('reconciliations.print', compact('reconciliation'))->setPaper('a4');
 
         return $pdf->stream('reconciliation-'.$reconciliation->account->account_name.'.pdf');
+    }
+
+    public function excel(BankReconciliation $reconciliation)
+    {
+        $reconciliation->load(['account', 'bankStatement', 'preparer', 'approver', 'items.cashbookEntry', 'items.bankStatementLine']);
+
+        $headings = ['Type', 'Source', 'Notes', 'Amount (₦)'];
+
+        $rows = $reconciliation->items->map(function (BankReconciliationItem $item) {
+            $source = '—';
+            if ($item->cashbookEntry) {
+                $source = 'Cashbook: '.$item->cashbookEntry->reference;
+            } elseif ($item->bankStatementLine) {
+                $source = 'Bank: '.($item->bankStatementLine->reference ?? $item->bankStatementLine->description);
+            }
+
+            return [
+                ucfirst(str_replace('_', ' ', $item->item_type)),
+                $source,
+                $item->notes,
+                (float) $item->amount,
+            ];
+        })->values()->all();
+
+        $rows[] = [];
+        $rows[] = ['', 'Cashbook Balance', '', (float) $reconciliation->cashbook_balance];
+        $rows[] = ['', 'Bank Statement Balance', '', (float) $reconciliation->bank_statement_balance];
+        $rows[] = ['', 'Adjusted Cashbook Balance', '', (float) $reconciliation->adjusted_cashbook_balance];
+        $rows[] = ['', 'Adjusted Bank Balance', '', (float) $reconciliation->adjusted_bank_balance];
+        $rows[] = ['', 'Difference', '', (float) $reconciliation->difference];
+
+        $filename = 'reconciliation-'.str_replace([' ', '/'], '-', $reconciliation->account->account_name).'-'.($reconciliation->reconciliation_date->format('Y-m-d'));
+
+        return Excel::download(new ArrayExport($headings, $rows, 'Reconciliation'), $filename.'.xlsx');
     }
 }

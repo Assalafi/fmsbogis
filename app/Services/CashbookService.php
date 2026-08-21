@@ -46,24 +46,6 @@ class CashbookService
         ]);
     }
 
-    public function generateOpeningBalance(Account $account, FiscalYear $fiscalYear): CashbookEntry
-    {
-        return CashbookEntry::firstOrCreate(
-            ['transaction_type' => 'opening_balance', 'transaction_id' => $account->id],
-            [
-                'account_id' => $account->id,
-                'fiscal_year_id' => $fiscalYear->id,
-                'transaction_type' => 'opening_balance',
-                'transaction_id' => $account->id,
-                'date' => $fiscalYear->start_date,
-                'reference' => 'Opening Balance',
-                'details' => 'Opening balance for '.$fiscalYear->name,
-                'receipt_amount' => $account->opening_balance,
-                'payment_amount' => 0,
-            ]
-        );
-    }
-
     public function closingBalance(Account $account, ?FiscalYear $fiscalYear = null): string
     {
         $fiscalYear = $fiscalYear ?? ActiveFiscalYear::get();

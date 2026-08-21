@@ -3,7 +3,16 @@
 @section('title', 'Revenue Performance')
 
 @section('content')
-    <x-page-header title="Revenue Performance" :breadcrumbs="['Performance' => null, 'Revenue' => null]" />
+    <x-page-header title="Revenue Performance" :breadcrumbs="['Performance' => null, 'Revenue' => null]">
+        <a href="{{ request()->fullUrlWithQuery(['export' => 'excel']) }}" class="btn btn-success">
+            <i class="material-symbols-outlined align-middle fs-18">download</i>
+            Excel
+        </a>
+        <a href="{{ request()->fullUrlWithQuery(['export' => 'pdf']) }}" class="btn btn-secondary" target="_blank">
+            <i class="material-symbols-outlined align-middle fs-18">picture_as_pdf</i>
+            PDF
+        </a>
+    </x-page-header>
 
     <div class="row">
         <x-stat-card label="TOTAL REVENUE" value="₦{{ number_format((float) $totalRevenue, 2) }}" icon="trending_up" color="success" />

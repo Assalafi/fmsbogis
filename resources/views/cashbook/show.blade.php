@@ -4,6 +4,10 @@
 
 @section('content')
     <x-page-header title="Cashbook — {{ $account->account_name }}" :breadcrumbs="['Accounts' => route('accounts.index'), $account->account_name => null]">
+        <a href="{{ route('cashbook.excel', $account) }}?{{ http_build_query(request()->only(['fiscal_year_id', 'date_from', 'date_to'])) }}" class="btn btn-success">
+            <i class="material-symbols-outlined align-middle fs-18">download</i>
+            Excel
+        </a>
         <a href="{{ route('cashbook.print', $account) }}?{{ http_build_query(request()->only(['fiscal_year_id', 'date_from', 'date_to'])) }}" class="btn btn-secondary" target="_blank">
             <i class="material-symbols-outlined align-middle fs-18">print</i>
             Print Cashbook
@@ -74,6 +78,15 @@
                     </tr>
                 </thead>
                 <tbody>
+                    <tr class="table-secondary">
+                        <td>{{ $fiscalYear?->start_date?->format('d M Y') ?? '—' }}</td>
+                        <td class="fw-medium">Opening Balance</td>
+                        <td>—</td>
+                        <td>Opening balance brought forward (IPSAS 2 / IPSAS 33)</td>
+                        <td class="text-end"></td>
+                        <td class="text-end"></td>
+                        <td class="text-end fw-medium">₦{{ number_format((float) $summary['opening_balance'], 2) }}</td>
+                    </tr>
                     @forelse($entries as $entry)
                         <tr>
                             <td>{{ $entry->date->format('d M Y') }}</td>

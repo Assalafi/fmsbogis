@@ -4,6 +4,10 @@
 
 @section('content')
     <x-page-header title="Reconciliation — {{ $reconciliation->account->account_name }}" :breadcrumbs="['Reconciliations' => route('reconciliations.index'), $reconciliation->account->account_name => null]">
+        <a href="{{ route('reconciliations.excel', $reconciliation) }}" class="btn btn-success">
+            <i class="material-symbols-outlined align-middle fs-18">download</i>
+            Excel
+        </a>
         <a href="{{ route('reconciliations.print', $reconciliation) }}" class="btn btn-secondary" target="_blank">Print Statement</a>
         @can('bank_reconciliation.approve')
         @if($reconciliation->status === 'draft')

@@ -48,6 +48,15 @@
             </tr>
         </thead>
         <tbody>
+            <tr style="background:#f2f2f2; font-weight:bold;">
+                <td>{{ $fiscalYear?->start_date?->format('d/m/Y') ?? '—' }}</td>
+                <td>Opening Balance</td>
+                <td>—</td>
+                <td>Opening balance brought forward (IPSAS 2 / IPSAS 33)</td>
+                <td class="num">—</td>
+                <td class="num">—</td>
+                <td class="num">{{ number_format((float) $summary['opening_balance'], 2) }}</td>
+            </tr>
             @foreach($entries as $entry)
                 <tr>
                     <td>{{ $entry->date->format('d/m/Y') }}</td>

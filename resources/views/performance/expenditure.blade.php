@@ -3,7 +3,16 @@
 @section('title', 'Expenditure Performance')
 
 @section('content')
-    <x-page-header title="Expenditure Performance" :breadcrumbs="['Performance' => null, 'Expenditure' => null]" />
+    <x-page-header title="Expenditure Performance" :breadcrumbs="['Performance' => null, 'Expenditure' => null]">
+        <a href="{{ request()->fullUrlWithQuery(['export' => 'excel']) }}" class="btn btn-success">
+            <i class="material-symbols-outlined align-middle fs-18">download</i>
+            Excel
+        </a>
+        <a href="{{ request()->fullUrlWithQuery(['export' => 'pdf']) }}" class="btn btn-secondary" target="_blank">
+            <i class="material-symbols-outlined align-middle fs-18">picture_as_pdf</i>
+            PDF
+        </a>
+    </x-page-header>
 
     @php
         $totalOriginal = $codes->sum(function ($c) { return (float) $c['original']; });

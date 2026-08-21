@@ -119,6 +119,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
     Route::middleware('permission:cashbook.view')->prefix('cashbook')->name('cashbook.')->group(function () {
         Route::get('{account}', [CashbookController::class, 'show'])->name('show');
         Route::get('{account}/print', [CashbookController::class, 'print'])->name('print');
+        Route::get('{account}/excel', [CashbookController::class, 'excel'])->name('excel');
     });
 
     Route::middleware('permission:bank_statements.view')->prefix('bank-statements')->name('bank-statements.')->group(function () {
@@ -141,6 +142,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::post('{reconciliation}/adjustments', [BankReconciliationController::class, 'addAdjustment'])->name('adjustments')->middleware('permission:bank_reconciliation.create');
         Route::post('{reconciliation}/approve', [BankReconciliationController::class, 'approve'])->name('approve')->middleware('permission:bank_reconciliation.approve');
         Route::get('{reconciliation}/print', [BankReconciliationController::class, 'print'])->name('print');
+        Route::get('{reconciliation}/excel', [BankReconciliationController::class, 'excel'])->name('excel');
     });
 
     Route::middleware('permission:performance.view')->prefix('performance')->name('performance.')->group(function () {

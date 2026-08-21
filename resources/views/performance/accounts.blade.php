@@ -3,7 +3,16 @@
 @section('title', 'Account Performance')
 
 @section('content')
-    <x-page-header title="Account Performance" :breadcrumbs="['Performance' => null, 'Accounts' => null]" />
+    <x-page-header title="Account Performance" :breadcrumbs="['Performance' => null, 'Accounts' => null]">
+        <a href="{{ request()->fullUrlWithQuery(['export' => 'excel']) }}" class="btn btn-success">
+            <i class="material-symbols-outlined align-middle fs-18">download</i>
+            Excel
+        </a>
+        <a href="{{ request()->fullUrlWithQuery(['export' => 'pdf']) }}" class="btn btn-secondary" target="_blank">
+            <i class="material-symbols-outlined align-middle fs-18">picture_as_pdf</i>
+            PDF
+        </a>
+    </x-page-header>
 
     <div class="card border-0 p-4 bg-white rounded-3">
         <div class="table-responsive">
