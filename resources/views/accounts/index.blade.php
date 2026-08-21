@@ -77,6 +77,11 @@
                                     <a href="{{ route('cashbook.show', $account) }}" class="text-success" title="Cashbook"><i class="material-symbols-outlined fs-20">menu_book</i></a>
                                     @can('accounts.update')
                                     <a href="{{ route('accounts.edit', $account) }}" class="text-primary" title="Edit"><i class="material-symbols-outlined fs-20">edit</i></a>
+                                    <form method="POST" action="{{ route('accounts.destroy', $account) }}" onsubmit="return confirm('Delete account {{ $account->account_name }}? Accounts with transactions cannot be deleted.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-danger border-0 bg-transparent p-0" title="Delete"><i class="material-symbols-outlined fs-20">delete</i></button>
+                                    </form>
                                     @endcan
                                 </div>
                             </td>

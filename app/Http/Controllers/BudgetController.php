@@ -301,4 +301,17 @@ class BudgetController extends Controller
             'upload_errors' => $errors,
         ]);
     }
+
+    public function destroy(EconomicCodeBudget $budget)
+    {
+        if ($budget->isApproved()) {
+            return back()->with($this->toast('An approved budget cannot be deleted. It has been used as the basis for payments.', 'danger'));
+        }
+
+        $budget->delete();
+
+        app(\App\Services\AuditService::class)->log('Budget Deleted', $budget);
+
+        return redirect()->route('budgets.index')->with($this->toast('Budget deleted.'));
+    }
 }

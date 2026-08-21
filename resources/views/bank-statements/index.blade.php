@@ -73,6 +73,15 @@
                                     <a href="{{ route('reconciliations.create', ['account_id' => $statement->account_id]) }}" class="text-success" title="Reconcile"><i class="material-symbols-outlined fs-20">rule</i></a>
                                     @endif
                                     @endcan
+                                    @can('bank_statements.create')
+                                    @if($statement->status === 'draft')
+                                    <form method="POST" action="{{ route('bank-statements.destroy', $statement) }}" onsubmit="return confirm('Delete this bank statement? This cannot be undone.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-danger border-0 bg-transparent p-0" title="Delete"><i class="material-symbols-outlined fs-20">delete</i></button>
+                                    </form>
+                                    @endif
+                                    @endcan
                                 </div>
                             </td>
                         </tr>

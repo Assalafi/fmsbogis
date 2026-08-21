@@ -215,4 +215,17 @@ class PaymentController extends Controller
 
         return $pdf->stream('payment-voucher-'.$payment->treasury_receipt_voucher_number.'.pdf');
     }
+
+    public function destroy(Payment $payment)
+    {
+        if ($payment->status !== 'pending') {
+            return back()->with($this->toast('Only pending payments can be deleted. Reverse or use the approval workflow for the rest.', 'danger'));
+        }
+
+        $payment->delete();
+
+        app(\App\Services\AuditService::class)->log('Payment Deleted', $payment);
+
+        return redirect()->route('payments.index')->with($this->toast('Payment deleted.'));
+    }
 }

@@ -105,4 +105,17 @@ class VirementController extends Controller
 
         return back()->with($this->toast('Virement rejected.', 'danger'));
     }
+
+    public function destroy(Virement $virement)
+    {
+        if ($virement->isApproved()) {
+            return back()->with($this->toast('An approved virement cannot be deleted — it has already adjusted the budgets.', 'danger'));
+        }
+
+        $virement->delete();
+
+        app(\App\Services\AuditService::class)->log('Virement Deleted', $virement);
+
+        return redirect()->route('virements.index')->with($this->toast('Virement deleted.'));
+    }
 }

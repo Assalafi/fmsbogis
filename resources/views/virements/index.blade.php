@@ -67,7 +67,18 @@
                             <td>{{ $virement->creator?->name ?? '—' }}</td>
                             <td>{{ $virement->approver?->name ?? '—' }}</td>
                             <td>
-                                <a href="{{ route('virements.show', $virement) }}" class="text-info" title="View"><i class="material-symbols-outlined fs-20">visibility</i></a>
+                                <div class="d-flex gap-1">
+                                    <a href="{{ route('virements.show', $virement) }}" class="text-info" title="View"><i class="material-symbols-outlined fs-20">visibility</i></a>
+                                    @can('virements.create')
+                                    @if(! $virement->isApproved())
+                                    <form method="POST" action="{{ route('virements.destroy', $virement) }}" onsubmit="return confirm('Delete this virement? This cannot be undone.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-danger border-0 bg-transparent p-0" title="Delete"><i class="material-symbols-outlined fs-20">delete</i></button>
+                                    </form>
+                                    @endif
+                                    @endcan
+                                </div>
                             </td>
                         </tr>
                     @empty

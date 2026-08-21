@@ -72,6 +72,15 @@
                                 <div class="d-flex gap-1">
                                     <a href="{{ route('reconciliations.show', $reconciliation) }}" class="text-info" title="View"><i class="material-symbols-outlined fs-20">visibility</i></a>
                                     <a href="{{ route('reconciliations.print', $reconciliation) }}" class="text-secondary" title="Print" target="_blank"><i class="material-symbols-outlined fs-20">print</i></a>
+                                    @can('bank_reconciliation.create')
+                                    @if($reconciliation->status === 'draft')
+                                    <form method="POST" action="{{ route('reconciliations.destroy', $reconciliation) }}" onsubmit="return confirm('Delete this draft reconciliation? This cannot be undone.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-danger border-0 bg-transparent p-0" title="Delete"><i class="material-symbols-outlined fs-20">delete</i></button>
+                                    </form>
+                                    @endif
+                                    @endcan
                                 </div>
                             </td>
                         </tr>

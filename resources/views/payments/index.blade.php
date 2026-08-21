@@ -109,6 +109,15 @@
                                     @endif
                                     @endcan
                                     <a href="{{ route('payments.print', $payment) }}" class="text-secondary" title="Print" target="_blank"><i class="material-symbols-outlined fs-20">print</i></a>
+                                    @can('payments.create')
+                                    @if($payment->status === 'pending')
+                                    <form method="POST" action="{{ route('payments.destroy', $payment) }}" onsubmit="return confirm('Delete payment {{ $payment->treasury_receipt_voucher_number }}? This cannot be undone.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-danger border-0 bg-transparent p-0" title="Delete"><i class="material-symbols-outlined fs-20">delete</i></button>
+                                    </form>
+                                    @endif
+                                    @endcan
                                 </div>
                             </td>
                         </tr>

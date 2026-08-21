@@ -173,6 +173,19 @@ class ReceiptController extends Controller
         return $pdf->stream('receipt-'.$receipt->treasury_receipt_voucher_number.'.pdf');
     }
 
+    public function destroy(Receipt $receipt)
+    {
+        if ($receipt->status !== 'pending') {
+            return back()->with($this->toast('Only pending receipts can be deleted. Approved/posted receipts must be reversed.', 'danger'));
+        }
+
+        $receipt->delete();
+
+        app(\App\Services\AuditService::class)->log('Receipt Deleted', $receipt);
+
+        return redirect()->route('receipts.index')->with($this->toast('Receipt deleted.'));
+    }
+
     /**
      * Bulk download receipt PDFs as a ZIP.
      */

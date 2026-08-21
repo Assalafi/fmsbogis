@@ -75,4 +75,27 @@ class FiscalYearController extends Controller
 
         return back()->with($this->toast('Fiscal Year closed.'));
     }
+
+    public function destroy(FiscalYear $fiscalYear)
+    {
+        if ($fiscalYear->id === \App\Support\ActiveFiscalYear::id()) {
+            return back()->with($this->toast('Cannot delete the active fiscal year. Set another fiscal year active first.', 'danger'));
+        }
+
+        $hasActivity = $fiscalYear->budgets()->exists()
+            || $fiscalYear->receipts()->exists()
+            || $fiscalYear->payments()->exists()
+            || $fiscalYear->virements()->exists()
+            || \App\Models\CashbookEntry::where('fiscal_year_id', $fiscalYear->id)->exists();
+
+        if ($hasActivity) {
+            return back()->with($this->toast('Cannot delete this fiscal year — it has budgets, receipts, payments, virements or cashbook activity.', 'danger'));
+        }
+
+        $fiscalYear->delete();
+
+        app(AuditService::class)->log('Fiscal Year Deleted', $fiscalYear);
+
+        return redirect()->route('fiscal-years.index')->with($this->toast('Fiscal year deleted.'));
+    }
 }

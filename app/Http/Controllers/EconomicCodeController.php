@@ -309,14 +309,34 @@ class EconomicCodeController extends Controller
         $budget = $economicCode->budgets()->where('fiscal_year_id', $fiscalYear->id)->first();
 
         return response()->json([
-            'original_budget' => Money::format($budget?->original_budget),
-            'supplementary_budget' => Money::format($budget?->supplementary_budget),
-            'virement_in' => Money::format($budget?->virement_in),
-            'virement_out' => Money::format($budget?->virement_out),
-            'total_budget' => Money::format($budget && $budget->status === 'approved' ? $budgetService->totalBudget($budget) : 0),
-            'paid_payments' => Money::format($budgetService->paidPayments($economicCode, $fiscalYear)),
-            'approved_unpaid' => Money::format($budgetService->approvedUnpaidPayments($economicCode, $fiscalYear)),
-            'available_budget' => Money::format($budgetService->availableBudget($economicCode, $fiscalYear)),
+            'original_budget' => Money::normalize($budget?->original_budget),
+            'supplementary_budget' => Money::normalize($budget?->supplementary_budget),
+            'virement_in' => Money::normalize($budget?->virement_in),
+            'virement_out' => Money::normalize($budget?->virement_out),
+            'total_budget' => Money::normalize($budget && $budget->status === 'approved' ? $budgetService->totalBudget($budget) : 0),
+            'paid_payments' => Money::normalize($budgetService->paidPayments($economicCode, $fiscalYear)),
+            'approved_unpaid' => Money::normalize($budgetService->approvedUnpaidPayments($economicCode, $fiscalYear)),
+            'available_budget' => Money::normalize($budgetService->availableBudget($economicCode, $fiscalYear)),
         ]);
+    }
+
+    public function destroy(EconomicCode $economicCode)
+    {
+        $hasActivity = $economicCode->receipts()->exists()
+            || $economicCode->payments()->exists()
+            || $economicCode->virementsIn()->exists()
+            || $economicCode->virementsOut()->exists()
+            || $economicCode->budgets()->where('status', 'approved')->exists()
+            || \App\Models\CashbookEntry::where('economic_code_id', $economicCode->id)->exists();
+
+        if ($hasActivity) {
+            return back()->with($this->toast('Cannot delete this economic code — it has receipts, payments, virements, an approved budget or cashbook activity. Deactivate it instead.', 'danger'));
+        }
+
+        $economicCode->delete();
+
+        app(\App\Services\AuditService::class)->log('Economic Code Deleted', $economicCode);
+
+        return redirect()->route('economic-codes.index')->with($this->toast('Economic code deleted.'));
     }
 }

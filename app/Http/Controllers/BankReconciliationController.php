@@ -214,6 +214,24 @@ class BankReconciliationController extends Controller
         return $pdf->stream('reconciliation-'.$reconciliation->account->account_name.'.pdf');
     }
 
+    public function destroy(BankReconciliation $reconciliation)
+    {
+        if ($reconciliation->isApproved()) {
+            return back()->with($this->toast('An approved reconciliation cannot be deleted.', 'danger'));
+        }
+
+        foreach ($reconciliation->items as $item) {
+            if ($item->bankStatementLine) {
+                $item->bankStatementLine->update(['match_status' => 'unmatched']);
+            }
+        }
+
+        $reconciliation->items()->delete();
+        $reconciliation->delete();
+
+        return redirect()->route('reconciliations.index')->with($this->toast('Draft reconciliation deleted.'));
+    }
+
     public function excel(BankReconciliation $reconciliation)
     {
         $reconciliation->load(['account', 'bankStatement', 'preparer', 'approver', 'items.cashbookEntry', 'items.bankStatementLine']);

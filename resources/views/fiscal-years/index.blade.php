@@ -53,6 +53,14 @@
                                         <button type="submit" class="text-danger border-0 bg-transparent" title="Close Year"><i class="material-symbols-outlined fs-20">lock</i></button>
                                     </form>
                                     @endif
+                                    @if($fiscalYear->id !== $activeId)
+                                    <form method="POST" action="{{ route('fiscal-years.destroy', $fiscalYear) }}"
+                                        onsubmit="return confirm('Delete Fiscal Year {{ $fiscalYear->name }}? Years with budgets or transactions cannot be deleted.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-danger border-0 bg-transparent" title="Delete"><i class="material-symbols-outlined fs-20">delete</i></button>
+                                    </form>
+                                    @endif
                                     @endcan
                                 </div>
                             </td>

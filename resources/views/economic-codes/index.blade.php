@@ -86,6 +86,11 @@
                                     <a href="{{ route('economic-codes.show', $code) }}" class="text-info" title="View"><i class="material-symbols-outlined fs-20">visibility</i></a>
                                     @can('economic_codes.update')
                                     <a href="{{ route('economic-codes.edit', $code) }}" class="text-primary" title="Edit"><i class="material-symbols-outlined fs-20">edit</i></a>
+                                    <form method="POST" action="{{ route('economic-codes.destroy', $code) }}" onsubmit="return confirm('Delete economic code {{ $code->code }}? Codes with receipts, payments or approved budgets cannot be deleted.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-danger border-0 bg-transparent p-0" title="Delete"><i class="material-symbols-outlined fs-20">delete</i></button>
+                                    </form>
                                     @endcan
                                 </div>
                             </td>

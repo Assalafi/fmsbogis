@@ -49,6 +49,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::get('{economicCode}', [EconomicCodeController::class, 'show'])->name('show');
         Route::get('{economicCode}/edit', [EconomicCodeController::class, 'edit'])->name('edit')->middleware('permission:economic_codes.update');
         Route::put('{economicCode}', [EconomicCodeController::class, 'update'])->name('update')->middleware('permission:economic_codes.update');
+        Route::delete('{economicCode}', [EconomicCodeController::class, 'destroy'])->name('destroy')->middleware('permission:economic_codes.update');
     });
 
     Route::middleware('permission:fiscal_years.view')->prefix('fiscal-years')->name('fiscal-years.')->group(function () {
@@ -59,6 +60,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::put('{fiscalYear}', [FiscalYearController::class, 'update'])->name('update')->middleware('permission:fiscal_years.update');
         Route::post('{fiscalYear}/set-active', [FiscalYearController::class, 'setActive'])->name('set-active');
         Route::post('{fiscalYear}/close', [FiscalYearController::class, 'close'])->name('close')->middleware('permission:fiscal_years.update');
+        Route::delete('{fiscalYear}', [FiscalYearController::class, 'destroy'])->name('destroy')->middleware('permission:fiscal_years.update');
     });
 
     Route::middleware('permission:budgets.view')->prefix('budgets')->name('budgets.')->group(function () {
@@ -73,6 +75,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::post('{budget}/submit', [BudgetController::class, 'submit'])->name('submit')->middleware('permission:budgets.create');
         Route::post('{budget}/approve', [BudgetController::class, 'approve'])->name('approve')->middleware('permission:budgets.approve');
         Route::post('{budget}/reject', [BudgetController::class, 'reject'])->name('reject')->middleware('permission:budgets.approve');
+        Route::delete('{budget}', [BudgetController::class, 'destroy'])->name('destroy')->middleware('permission:budgets.create');
     });
 
     Route::middleware('permission:virements.view')->prefix('virements')->name('virements.')->group(function () {
@@ -82,6 +85,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::get('{virement}', [VirementController::class, 'show'])->name('show');
         Route::post('{virement}/approve', [VirementController::class, 'approve'])->name('approve')->middleware('permission:virements.approve');
         Route::post('{virement}/reject', [VirementController::class, 'reject'])->name('reject')->middleware('permission:virements.approve');
+        Route::delete('{virement}', [VirementController::class, 'destroy'])->name('destroy')->middleware('permission:virements.create');
     });
 
     Route::middleware('permission:receipts.view')->prefix('receipts')->name('receipts.')->group(function () {
@@ -99,6 +103,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::post('{receipt}/post', [ReceiptController::class, 'post'])->name('post')->middleware('permission:receipts.approve');
         Route::post('{receipt}/reverse', [ReceiptController::class, 'reverse'])->name('reverse')->middleware('permission:receipts.approve');
         Route::get('{receipt}/print', [ReceiptController::class, 'print'])->name('print');
+        Route::delete('{receipt}', [ReceiptController::class, 'destroy'])->name('destroy')->middleware('permission:receipts.create');
     });
 
     Route::middleware('permission:payments.view')->prefix('payments')->name('payments.')->group(function () {
@@ -114,6 +119,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::post('{payment}/mark-paid', [PaymentController::class, 'markPaid'])->name('mark-paid')->middleware('permission:payments.mark_paid');
         Route::post('{payment}/reverse', [PaymentController::class, 'reverse'])->name('reverse')->middleware('permission:payments.approve');
         Route::get('{payment}/print', [PaymentController::class, 'print'])->name('print');
+        Route::delete('{payment}', [PaymentController::class, 'destroy'])->name('destroy')->middleware('permission:payments.create');
     });
 
     Route::middleware('permission:cashbook.view')->prefix('cashbook')->name('cashbook.')->group(function () {
@@ -143,6 +149,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::post('{reconciliation}/approve', [BankReconciliationController::class, 'approve'])->name('approve')->middleware('permission:bank_reconciliation.approve');
         Route::get('{reconciliation}/print', [BankReconciliationController::class, 'print'])->name('print');
         Route::get('{reconciliation}/excel', [BankReconciliationController::class, 'excel'])->name('excel');
+        Route::delete('{reconciliation}', [BankReconciliationController::class, 'destroy'])->name('destroy')->middleware('permission:bank_reconciliation.create');
     });
 
     Route::middleware('permission:performance.view')->prefix('performance')->name('performance.')->group(function () {

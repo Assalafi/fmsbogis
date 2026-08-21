@@ -128,6 +128,15 @@
                                     @endif
                                     @endcan
                                     <a href="{{ route('receipts.pdf', $receipt) }}" class="text-secondary" title="Print Receipt PDF" target="_blank"><i class="material-symbols-outlined fs-20">print</i></a>
+                                    @can('receipts.create')
+                                    @if($receipt->status === 'pending')
+                                    <form method="POST" action="{{ route('receipts.destroy', $receipt) }}" onsubmit="return confirm('Delete receipt {{ $receipt->treasury_receipt_voucher_number }}? This cannot be undone.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-danger border-0 bg-transparent p-0" title="Delete"><i class="material-symbols-outlined fs-20">delete</i></button>
+                                    </form>
+                                    @endif
+                                    @endcan
                                 </div>
                             </td>
                         </tr>
