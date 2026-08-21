@@ -61,6 +61,9 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
     Route::middleware('permission:budgets.view')->prefix('budgets')->name('budgets.')->group(function () {
         Route::get('/', [BudgetController::class, 'index'])->name('index');
         Route::get('pending', [BudgetController::class, 'pending'])->name('pending');
+        Route::get('upload', [BudgetController::class, 'upload'])->name('upload')->middleware('permission:budgets.create');
+        Route::get('upload/template', [BudgetController::class, 'downloadTemplate'])->name('upload.template')->middleware('permission:budgets.create');
+        Route::post('upload', [BudgetController::class, 'importBudgetFile'])->name('upload.import')->middleware('permission:budgets.create');
         Route::get('create', [BudgetController::class, 'create'])->name('create')->middleware('permission:budgets.create');
         Route::post('/', [BudgetController::class, 'store'])->name('store')->middleware('permission:budgets.create');
         Route::get('{budget}', [BudgetController::class, 'show'])->name('show');

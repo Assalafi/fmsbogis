@@ -167,4 +167,138 @@ class BudgetController extends Controller
 
         return view('budgets.approval', compact('budgets'));
     }
+
+    /**
+     * Show the approved budget upload page.
+     */
+    public function upload()
+    {
+        $fiscalYears = FiscalYear::orderBy('start_date', 'desc')->get();
+        $activeFiscalYearId = ActiveFiscalYear::id();
+
+        return view('budgets.upload', compact('fiscalYears', 'activeFiscalYearId'));
+    }
+
+    /**
+     * Download the CSV template for budget uploads.
+     */
+    public function downloadTemplate()
+    {
+        $csv = "economic_code,amount\n12010101,20000000\n22020101,15000000\n";
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="approved-budget-template.csv"',
+        ]);
+    }
+
+    /**
+     * Import approved budgets from an uploaded CSV/XLSX file.
+     */
+    public function importBudgetFile(Request $request)
+    {
+        $data = $request->validate([
+            'fiscal_year_id' => ['required', 'uuid', 'exists:fiscal_years,id'],
+            'file' => ['required', 'file', 'mimes:csv,xlsx,xls,txt', 'max:5120'],
+        ]);
+
+        $fiscalYear = FiscalYear::findOrFail($data['fiscal_year_id']);
+
+        $import = new \App\Imports\ApprovedBudgetImport;
+
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+        } catch (\Throwable $e) {
+            return back()->with($this->toast('Could not read the file: '.$e->getMessage(), 'danger'));
+        }
+
+        $rows = collect($import->rows);
+
+        if ($rows->isEmpty()) {
+            return back()->with($this->toast('No valid rows found. Expected columns: economic_code, amount.', 'warning'));
+        }
+
+        $imported = 0;
+        $skipped = 0;
+        $errors = [];
+        $codes = EconomicCode::whereIn('code', $rows->pluck('code')->unique()->values()->all())->get()->keyBy('code');
+
+        foreach ($rows as $index => $row) {
+            $line = $index + 2; // 1-based line, accounting for the header row
+
+            $code = $codes->get($row['code']);
+
+            if (! $code) {
+                $errors[] = "Row {$line}: Economic code \"{$row['code']}\" not found.";
+                $skipped++;
+
+                continue;
+            }
+
+            if (! $code->isExpense()) {
+                $errors[] = "Row {$line}: Economic code \"{$row['code']}\" is not an Expense code.";
+                $skipped++;
+
+                continue;
+            }
+
+            if (! $code->isActive()) {
+                $errors[] = "Row {$line}: Economic code \"{$row['code']}\" is inactive.";
+                $skipped++;
+
+                continue;
+            }
+
+            $amount = $row['amount'];
+
+            if ($amount <= 0) {
+                $errors[] = "Row {$line}: Amount must be greater than zero for code \"{$row['code']}\".";
+                $skipped++;
+
+                continue;
+            }
+
+            $exists = EconomicCodeBudget::where('fiscal_year_id', $fiscalYear->id)
+                ->where('economic_code_id', $code->id)
+                ->exists();
+
+            if ($exists) {
+                $errors[] = "Row {$line}: Budget already exists for code \"{$row['code']}\" in FY {$fiscalYear->name}. Skipped.";
+                $skipped++;
+
+                continue;
+            }
+
+            EconomicCodeBudget::create([
+                'fiscal_year_id' => $fiscalYear->id,
+                'economic_code_id' => $code->id,
+                'original_budget' => $amount,
+                'supplementary_budget' => 0,
+                'virement_in' => 0,
+                'virement_out' => 0,
+                'revised_budget' => $amount,
+                'status' => 'approved',
+                'notes' => 'Imported via budget upload',
+                'created_by' => auth()->id(),
+                'approved_by' => auth()->id(),
+                'approved_at' => now(),
+            ]);
+
+            $imported++;
+        }
+
+        app(AuditService::class)->log('Approved Budgets Uploaded', null, null, [
+            'fiscal_year_id' => $fiscalYear->id,
+            'imported' => $imported,
+            'skipped' => $skipped,
+        ]);
+
+        return back()->with([
+            'toast' => [
+                'type' => $imported > 0 ? 'success' : 'warning',
+                'message' => "Budget upload complete for FY {$fiscalYear->name}: {$imported} imported, {$skipped} skipped.",
+            ],
+            'upload_errors' => $errors,
+        ]);
+    }
 }

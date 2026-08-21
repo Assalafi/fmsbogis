@@ -5,6 +5,10 @@
 @section('content')
     <x-page-header title="Approved Budgets" :breadcrumbs="['Budgets' => null]">
         @can('budgets.create')
+        <a href="{{ route('budgets.upload') }}" class="btn btn-success">
+            <i class="material-symbols-outlined align-middle fs-18">upload</i>
+            Upload Budget
+        </a>
         <a href="{{ route('budgets.create') }}" class="btn btn-primary">
             <i class="material-symbols-outlined align-middle fs-18">add</i>
             Create Budget

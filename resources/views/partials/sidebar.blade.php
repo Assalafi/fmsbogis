@@ -51,11 +51,19 @@
                 <span class="menu-title-text">BUDGET</span>
             </li>
             <li class="menu-item">
-                <a href="{{ route('budgets.index') }}" class="menu-link {{ request()->routeIs('budgets.index') || request()->routeIs('budgets.show') || request()->routeIs('budgets.create') ? 'active' : '' }}">
+                <a href="{{ route('budgets.index') }}" class="menu-link {{ request()->routeIs('budgets.index') || request()->routeIs('budgets.show') || request()->routeIs('budgets.create') || request()->routeIs('budgets.upload*') ? 'active' : '' }}">
                     <span class="material-symbols-outlined menu-icon">account_balance_wallet</span>
                     <span class="title">Approved Budgets</span>
                 </a>
             </li>
+            @can('budgets.create')
+            <li class="menu-item">
+                <a href="{{ route('budgets.upload') }}" class="menu-link {{ request()->routeIs('budgets.upload*') ? 'active' : '' }}">
+                    <span class="material-symbols-outlined menu-icon">upload_file</span>
+                    <span class="title">Upload Budget</span>
+                </a>
+            </li>
+            @endcan
             @can('budgets.approve')
             <li class="menu-item">
                 <a href="{{ route('budgets.pending') }}" class="menu-link {{ request()->routeIs('budgets.pending') ? 'active' : '' }}">
