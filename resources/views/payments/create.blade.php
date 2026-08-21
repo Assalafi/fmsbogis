@@ -173,7 +173,6 @@ document.addEventListener('DOMContentLoaded', function () {
             html += '<tr><td class="ps-0 fs-14 text-secondary">Supplementary</td><td class="pe-0 text-end">' + fmt(b.supplementary_budget) + '</td></tr>';
             html += '<tr><td class="ps-0 fs-14 text-secondary">Virement In</td><td class="pe-0 text-end">' + fmt(b.virement_in) + '</td></tr>';
             html += '<tr><td class="ps-0 fs-14 text-secondary">Virement Out</td><td class="pe-0 text-end">' + fmt(b.virement_out) + '</td></tr>';
-            html += '<tr class="border-top"><td class="ps-0 fs-14 fw-medium">Revised Budget</td><td class="pe-0 text-end fw-medium">' + fmt(b.revised_budget) + '</td></tr>';
             html += '<tr><td class="ps-0 fs-14 text-secondary">Paid Payments</td><td class="pe-0 text-end">' + fmt(b.paid_payments) + '</td></tr>';
             html += '<tr><td class="ps-0 fs-14 text-secondary">Approved Unpaid</td><td class="pe-0 text-end">' + fmt(b.approved_unpaid) + '</td></tr>';
             html += '<tr class="border-top"><td class="ps-0 fs-14 fw-medium text-success">Available Budget</td><td class="pe-0 text-end fw-medium text-success">' + fmt(b.available_budget) + '</td></tr>';

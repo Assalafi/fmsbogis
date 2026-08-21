@@ -7,17 +7,17 @@
 
     @php
         $totalOriginal = $codes->sum(function ($c) { return (float) $c['original']; });
-        $totalRevised = $codes->sum(function ($c) { return (float) $c['revised']; });
+        $totalBudget = $codes->sum(function ($c) { return (float) $c['total']; });
         $totalPaid = $codes->sum(function ($c) { return (float) $c['paid']; });
         $totalAvailable = $codes->sum(function ($c) { return (float) $c['available']; });
-        $utilization = $totalRevised > 0 ? round($totalPaid / $totalRevised * 100, 2) : 0;
+        $utilization = $totalBudget > 0 ? round($totalPaid / $totalBudget * 100, 2) : 0;
     @endphp
 
     <div class="row">
         <x-stat-card label="ORIGINAL BUDGET" value="₦{{ number_format($totalOriginal, 2) }}" icon="account_balance_wallet" color="secondary" />
-        <x-stat-card label="REVISED BUDGET" value="₦{{ number_format($totalRevised, 2) }}" icon="tune" color="primary" />
         <x-stat-card label="TOTAL PAID" value="₦{{ number_format($totalPaid, 2) }}" icon="north_east" color="danger" />
-        <x-stat-card label="UTILIZATION" value="{{ $utilization }}%" icon="percent" color="success" />
+        <x-stat-card label="AVAILABLE BUDGET" value="₦{{ number_format($totalAvailable, 2) }}" icon="savings" color="success" />
+        <x-stat-card label="UTILIZATION" value="{{ $utilization }}%" icon="percent" color="primary" />
     </div>
 
     <div class="card border-0 p-4 bg-white rounded-3 mb-4">
@@ -43,7 +43,6 @@
                         <th>Description</th>
                         <th>Account Type</th>
                         <th class="text-end">Original</th>
-                        <th class="text-end">Revised</th>
                         <th class="text-end">Paid</th>
                         <th class="text-end">Approved Unpaid</th>
                         <th class="text-end">Available</th>
@@ -57,7 +56,6 @@
                             <td>{{ $row['code']->name }}</td>
                             <td><span class="badge bg-{{ \App\Support\AccountTypes::badgeColor($row['code']->account_type) }}">{{ ucfirst($row['code']->account_type) }}</span></td>
                             <td class="text-end">₦{{ number_format((float) $row['original'], 2) }}</td>
-                            <td class="text-end">₦{{ number_format((float) $row['revised'], 2) }}</td>
                             <td class="text-end text-danger">₦{{ number_format((float) $row['paid'], 2) }}</td>
                             <td class="text-end">₦{{ number_format((float) $row['approved_unpaid'], 2) }}</td>
                             <td class="text-end text-success">₦{{ number_format((float) $row['available'], 2) }}</td>
@@ -71,7 +69,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="9" class="text-center text-secondary py-4">No expense economic codes found.</td></tr>
+                        <tr><td colspan="8" class="text-center text-secondary py-4">No expense economic codes found.</td></tr>
                     @endforelse
                 </tbody>
             </table>

@@ -18,7 +18,6 @@
 
         <div class="row">
             <x-stat-card label="APPROVED BUDGET" value="₦{{ number_format((float) $totals['original_budget'], 2) }}" icon="account_balance_wallet" color="primary" />
-            <x-stat-card label="REVISED BUDGET" value="₦{{ number_format((float) $totals['revised_budget'], 2) }}" icon="tune" color="info" />
             <x-stat-card label="TOTAL RECEIPTS" value="₦{{ number_format((float) $totals['total_receipts'], 2) }}" icon="south_west" color="success" />
             <x-stat-card label="TOTAL PAYMENTS" value="₦{{ number_format((float) $totals['total_payments'], 2) }}" icon="north_east" color="danger" />
         </div>

@@ -12,7 +12,6 @@
     @if($economicCode->isExpense())
         <div class="row">
             <x-stat-card label="ORIGINAL BUDGET" value="₦{{ number_format((float) ($budget?->original_budget ?? 0), 2) }}" icon="account_balance_wallet" color="secondary" />
-            <x-stat-card label="REVISED BUDGET" value="₦{{ number_format((float) ($budget ? $budgetService->revisedBudget($budget) : 0), 2) }}" icon="tune" color="primary" />
             <x-stat-card label="PAID PAYMENTS" value="₦{{ number_format((float) ($fiscalYear ? $budgetService->paidPayments($economicCode, $fiscalYear) : 0), 2) }}" icon="north_east" color="danger" />
             <x-stat-card label="AVAILABLE BUDGET" value="₦{{ number_format((float) ($fiscalYear ? $budgetService->availableBudget($economicCode, $fiscalYear) : 0), 2) }}" icon="savings" color="success" />
         </div>

@@ -21,7 +21,10 @@ class PerformanceService
         $approvedBudgets = EconomicCodeBudget::where('fiscal_year_id', $fiscalYear->id)->where('status', 'approved')->get();
 
         $original = Money::normalize($approvedBudgets->sum('original_budget'));
-        $revised = Money::normalize($approvedBudgets->sum('revised_budget'));
+
+        $totalBudget = Money::normalize($approvedBudgets->sum(function (EconomicCodeBudget $budget) {
+            return (float) $this->budgetService->totalBudget($budget);
+        }));
 
         $receipts = Money::normalize(Receipt::where('fiscal_year_id', $fiscalYear->id)->where('status', 'posted')->sum('amount'));
         $payments = Money::normalize(Payment::where('fiscal_year_id', $fiscalYear->id)->where('status', 'paid')->sum('amount'));
@@ -44,10 +47,10 @@ class PerformanceService
 
         return [
             'original_budget' => $original,
-            'revised_budget' => $revised,
+            'total_budget' => $totalBudget,
             'total_receipts' => $receipts,
             'total_payments' => $payments,
-            'available_budget' => Money::sub($revised, Money::add($payments, $approvedUnpaid)),
+            'available_budget' => Money::sub($totalBudget, Money::add($payments, $approvedUnpaid)),
             'capital_payments' => $capitalPayments,
             'overhead_payments' => $overheadPayments,
             'personnel_payments' => $personnelPayments,
@@ -74,11 +77,11 @@ class PerformanceService
                     ->sum('amount'));
 
                 if ($code->isExpense() && $budget && $budget->status === 'approved') {
-                    $revised = $this->budgetService->revisedBudget($budget);
+                    $total = $this->budgetService->totalBudget($budget);
                     $available = $this->budgetService->availableBudget($code, $fiscalYear);
-                    $performance = Money::isZero($revised) ? 0 : round((float) Money::div($payments, $revised) * 100, 2);
+                    $performance = Money::isZero($total) ? 0 : round((float) Money::div($payments, $total) * 100, 2);
                 } else {
-                    $revised = '0.00';
+                    $total = '0.00';
                     $available = '0.00';
                     $performance = null;
                 }
@@ -87,7 +90,7 @@ class PerformanceService
                     'code' => $code,
                     'budget' => $budget,
                     'original_budget' => $budget?->original_budget ?? '0.00',
-                    'revised_budget' => $revised,
+                    'total_budget' => $total,
                     'receipts' => $receipts,
                     'payments' => $payments,
                     'available' => $available,

@@ -102,7 +102,7 @@ class BudgetController extends Controller
         $budgetService = app(BudgetService::class);
 
         $stats = [
-            'revised' => $budgetService->revisedBudget($budget),
+            'total' => $budgetService->totalBudget($budget),
             'paid' => $budgetService->paidPayments($budget->economicCode, $budget->fiscalYear),
             'approved_unpaid' => $budgetService->approvedUnpaidPayments($budget->economicCode, $budget->fiscalYear),
             'available' => $budgetService->availableBudget($budget->economicCode, $budget->fiscalYear),

@@ -10,7 +10,11 @@ use App\Support\Money;
 
 class BudgetService
 {
-    public function revisedBudget(EconomicCodeBudget $budget): string
+    /**
+     * Total budget available for the code:
+     * Original + Supplementary + Virement In - Virement Out.
+     */
+    public function totalBudget(EconomicCodeBudget $budget): string
     {
         return Money::add(
             $budget->original_budget,
@@ -50,11 +54,11 @@ class BudgetService
             return '0.00';
         }
 
-        $revised = $this->revisedBudget($budget);
+        $total = $this->totalBudget($budget);
         $paid = $this->paidPayments($economicCode, $fiscalYear);
         $approvedUnpaid = $this->approvedUnpaidPayments($economicCode, $fiscalYear);
 
-        $available = Money::sub($revised, Money::add($paid, $approvedUnpaid));
+        $available = Money::sub($total, Money::add($paid, $approvedUnpaid));
 
         return Money::compare($available, 0) === -1 ? '0.00' : $available;
     }
@@ -62,10 +66,5 @@ class BudgetService
     public function canPay(EconomicCode $economicCode, FiscalYear $fiscalYear, string $amount): bool
     {
         return Money::compare($amount, $this->availableBudget($economicCode, $fiscalYear)) <= 0;
-    }
-
-    public function refreshRevisedBudget(EconomicCodeBudget $budget): void
-    {
-        $budget->update(['revised_budget' => $this->revisedBudget($budget)]);
     }
 }

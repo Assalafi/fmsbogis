@@ -8,7 +8,7 @@
     @php
         $reportGroups = [
             'BUDGET REPORTS' => [
-                'budget-report' => 'Approved Budget / Revised Budget / Available Budget',
+                'budget-report' => 'Approved Budget / Available Budget',
                 'virement-report' => 'Virement Report',
             ],
             'RECEIPT REPORTS' => [

@@ -313,7 +313,7 @@ class EconomicCodeController extends Controller
             'supplementary_budget' => Money::format($budget?->supplementary_budget),
             'virement_in' => Money::format($budget?->virement_in),
             'virement_out' => Money::format($budget?->virement_out),
-            'revised_budget' => Money::format($budget && $budget->status === 'approved' ? $budgetService->revisedBudget($budget) : 0),
+            'total_budget' => Money::format($budget && $budget->status === 'approved' ? $budgetService->totalBudget($budget) : 0),
             'paid_payments' => Money::format($budgetService->paidPayments($economicCode, $fiscalYear)),
             'approved_unpaid' => Money::format($budgetService->approvedUnpaidPayments($economicCode, $fiscalYear)),
             'available_budget' => Money::format($budgetService->availableBudget($economicCode, $fiscalYear)),

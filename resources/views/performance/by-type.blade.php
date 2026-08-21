@@ -6,14 +6,13 @@
     <x-page-header title="{{ ucfirst($accountType) }} Performance" :breadcrumbs="['Performance' => null, ucfirst($accountType) => null]" />
 
     @php
-        $totalRevised = $codes->sum(function ($c) { return (float) $c['revised']; });
+        $totalBudget = $codes->sum(function ($c) { return (float) $c['total']; });
         $totalPaid = $codes->sum(function ($c) { return (float) $c['paid']; });
         $totalAvailable = $codes->sum(function ($c) { return (float) $c['available']; });
-        $utilization = $totalRevised > 0 ? round($totalPaid / $totalRevised * 100, 2) : 0;
+        $utilization = $totalBudget > 0 ? round($totalPaid / $totalBudget * 100, 2) : 0;
     @endphp
 
     <div class="row">
-        <x-stat-card label="{{ strtoupper($accountType) }} REVISED BUDGET" value="₦{{ number_format($totalRevised, 2) }}" icon="tune" color="primary" />
         <x-stat-card label="{{ strtoupper($accountType) }} PAYMENTS" value="₦{{ number_format($totalPaid, 2) }}" icon="north_east" color="danger" />
         <x-stat-card label="{{ strtoupper($accountType) }} AVAILABLE" value="₦{{ number_format($totalAvailable, 2) }}" icon="savings" color="success" />
         <x-stat-card label="{{ strtoupper($accountType) }} UTILIZATION" value="{{ $utilization }}%" icon="percent" color="warning" />
@@ -26,7 +25,6 @@
                     <tr>
                         <th>Economic Code</th>
                         <th>Description</th>
-                        <th class="text-end">Revised Budget</th>
                         <th class="text-end">Actual</th>
                         <th class="text-end">Available</th>
                         <th class="text-end">Utilization</th>
@@ -37,7 +35,6 @@
                         <tr>
                             <td class="fw-medium">{{ $row['code']->code }}</td>
                             <td>{{ $row['code']->name }}</td>
-                            <td class="text-end">₦{{ number_format((float) $row['revised'], 2) }}</td>
                             <td class="text-end text-danger">₦{{ number_format((float) $row['paid'], 2) }}</td>
                             <td class="text-end text-success">₦{{ number_format((float) $row['available'], 2) }}</td>
                             <td class="text-end">
@@ -50,7 +47,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="text-center text-secondary py-4">No {{ $accountType }} expense codes found.</td></tr>
+                        <tr><td colspan="5" class="text-center text-secondary py-4">No {{ $accountType }} expense codes found.</td></tr>
                     @endforelse
                 </tbody>
             </table>

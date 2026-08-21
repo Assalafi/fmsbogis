@@ -50,18 +50,18 @@ class PerformanceController extends Controller
             $budget = $code->budgets()->where('fiscal_year_id', $fiscalYear?->id)->first();
             $paid = $budgetService->paidPayments($code, $fiscalYear);
             $approvedUnpaid = $budgetService->approvedUnpaidPayments($code, $fiscalYear);
-            $revised = $budget ? $budgetService->revisedBudget($budget) : '0.00';
+            $total = $budget ? $budgetService->totalBudget($budget) : '0.00';
             $available = $budget ? $budgetService->availableBudget($code, $fiscalYear) : '0.00';
 
             return [
                 'code' => $code,
                 'budget' => $budget,
                 'original' => $budget?->original_budget ?? '0.00',
-                'revised' => $revised,
+                'total' => $total,
                 'paid' => $paid,
                 'approved_unpaid' => $approvedUnpaid,
                 'available' => $available,
-                'utilization' => $revised !== '0.00' && $budget ? round((float) \App\Support\Money::div($paid, $revised) * 100, 2) : 0,
+                'utilization' => $total !== '0.00' && $budget ? round((float) \App\Support\Money::div($paid, $total) * 100, 2) : 0,
             ];
         });
 
@@ -102,14 +102,14 @@ class PerformanceController extends Controller
             ->map(function (EconomicCode $code) use ($fiscalYear, $budgetService) {
                 $budget = $code->budgets()->where('fiscal_year_id', $fiscalYear?->id)->first();
                 $paid = $budgetService->paidPayments($code, $fiscalYear);
-                $revised = $budget ? $budgetService->revisedBudget($budget) : '0.00';
+                $total = $budget ? $budgetService->totalBudget($budget) : '0.00';
 
                 return [
                     'code' => $code,
-                    'revised' => $revised,
+                    'total' => $total,
                     'paid' => $paid,
                     'available' => $budget ? $budgetService->availableBudget($code, $fiscalYear) : '0.00',
-                    'utilization' => $revised !== '0.00' && $budget ? round((float) \App\Support\Money::div($paid, $revised) * 100, 2) : 0,
+                    'utilization' => $total !== '0.00' && $budget ? round((float) \App\Support\Money::div($paid, $total) * 100, 2) : 0,
                 ];
             });
 

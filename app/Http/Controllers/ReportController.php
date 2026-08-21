@@ -88,7 +88,7 @@ class ReportController extends Controller
             ->map(function ($budget) use ($budgetService, $fiscalYear) {
                 return [
                     'budget' => $budget,
-                    'revised' => $budgetService->revisedBudget($budget),
+                    'total' => $budgetService->totalBudget($budget),
                     'paid' => $budgetService->paidPayments($budget->economicCode, $fiscalYear),
                     'available' => $budgetService->availableBudget($budget->economicCode, $fiscalYear),
                 ];

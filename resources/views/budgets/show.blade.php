@@ -26,7 +26,6 @@
     <div class="row">
         <x-stat-card label="ORIGINAL BUDGET" value="₦{{ number_format((float) $budget->original_budget, 2) }}" icon="account_balance_wallet" color="secondary" />
         <x-stat-card label="SUPPLEMENTARY" value="₦{{ number_format((float) $budget->supplementary_budget, 2) }}" icon="add" color="info" />
-        <x-stat-card label="REVISED BUDGET" value="₦{{ number_format((float) $stats['revised'], 2) }}" icon="tune" color="primary" />
         <x-stat-card label="AVAILABLE BUDGET" value="₦{{ number_format((float) $stats['available'], 2) }}" icon="savings" color="success" />
     </div>
 

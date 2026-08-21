@@ -15,7 +15,6 @@
                         <th>Type</th>
                         <th>Account Type</th>
                         <th class="text-end">Original Budget</th>
-                        <th class="text-end">Revised Budget</th>
                         <th class="text-end">Receipts</th>
                         <th class="text-end">Payments</th>
                         <th class="text-end">Available</th>
@@ -32,7 +31,6 @@
                             <td><span class="badge bg-{{ $row['code']->isRevenue() ? 'success' : 'primary' }}">{{ ucfirst($row['code']->type) }}</span></td>
                             <td>{{ $row['code']->account_type ? ucfirst($row['code']->account_type) : '—' }}</td>
                             <td class="text-end">₦{{ number_format((float) $row['original_budget'], 2) }}</td>
-                            <td class="text-end">₦{{ number_format((float) $row['revised_budget'], 2) }}</td>
                             <td class="text-end text-success">₦{{ number_format((float) $row['receipts'], 2) }}</td>
                             <td class="text-end text-danger">₦{{ number_format((float) $row['payments'], 2) }}</td>
                             <td class="text-end">₦{{ number_format((float) $row['available'], 2) }}</td>
@@ -50,7 +48,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="10" class="text-center text-secondary py-4">No economic codes found.</td></tr>
+                        <tr><td colspan="9" class="text-center text-secondary py-4">No economic codes found.</td></tr>
                     @endforelse
                 </tbody>
             </table>

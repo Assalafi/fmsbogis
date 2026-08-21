@@ -95,9 +95,6 @@ class VirementService
             $sourceBudget->update(['virement_out' => Money::add($sourceBudget->virement_out, $virement->amount)]);
             $destinationBudget->update(['virement_in' => Money::add($destinationBudget->virement_in, $virement->amount)]);
 
-            $this->budgetService->refreshRevisedBudget($sourceBudget);
-            $this->budgetService->refreshRevisedBudget($destinationBudget);
-
             $virement->update([
                 'status' => 'approved',
                 'approved_by' => auth()->id(),

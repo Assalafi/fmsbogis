@@ -62,7 +62,6 @@
                         <th class="text-end">Supplementary</th>
                         <th class="text-end">Virement In</th>
                         <th class="text-end">Virement Out</th>
-                        <th class="text-end">Revised</th>
                         <th class="text-end">Paid</th>
                         <th class="text-end">Available</th>
                         <th>Status</th>
@@ -83,7 +82,6 @@
                             <td class="text-end">₦{{ number_format((float) $budget->supplementary_budget, 2) }}</td>
                             <td class="text-end">₦{{ number_format((float) $budget->virement_in, 2) }}</td>
                             <td class="text-end">₦{{ number_format((float) $budget->virement_out, 2) }}</td>
-                            <td class="text-end fw-medium">₦{{ number_format((float) $budgetService->revisedBudget($budget), 2) }}</td>
                             <td class="text-end">₦{{ number_format((float) $budgetService->paidPayments($budget->economicCode, $budget->fiscalYear), 2) }}</td>
                             <td class="text-end text-success fw-medium">₦{{ number_format((float) $budgetService->availableBudget($budget->economicCode, $budget->fiscalYear), 2) }}</td>
                             <td>@include('components.status-badge', ['status' => $budget->status])</td>
@@ -93,7 +91,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="text-center text-secondary py-4">
+                            <td colspan="10" class="text-center text-secondary py-4">
                                 No Approved Budget Found
                                 <div class="mt-2">Create a budget for an Expense Economic Code.</div>
                                 @can('budgets.create')

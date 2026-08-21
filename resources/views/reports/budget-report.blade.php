@@ -36,7 +36,6 @@
                         <th class="text-end">Supplementary</th>
                         <th class="text-end">Virement In</th>
                         <th class="text-end">Virement Out</th>
-                        <th class="text-end">Revised</th>
                         <th class="text-end">Paid</th>
                         <th class="text-end">Available</th>
                         <th>Status</th>
@@ -51,13 +50,12 @@
                             <td class="text-end">₦{{ number_format((float) $row['budget']->supplementary_budget, 2) }}</td>
                             <td class="text-end">₦{{ number_format((float) $row['budget']->virement_in, 2) }}</td>
                             <td class="text-end">₦{{ number_format((float) $row['budget']->virement_out, 2) }}</td>
-                            <td class="text-end fw-medium">₦{{ number_format((float) $row['revised'], 2) }}</td>
                             <td class="text-end">₦{{ number_format((float) $row['paid'], 2) }}</td>
                             <td class="text-end text-success">₦{{ number_format((float) $row['available'], 2) }}</td>
                             <td>@include('components.status-badge', ['status' => $row['budget']->status])</td>
                         </tr>
                     @empty
-                        <tr><td colspan="10" class="text-center text-secondary py-4">No budgets found.</td></tr>
+                        <tr><td colspan="9" class="text-center text-secondary py-4">No budgets found.</td></tr>
                     @endforelse
                 </tbody>
             </table>
