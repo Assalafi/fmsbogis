@@ -163,11 +163,19 @@
 </head>
 
 <body>
+    @php
+        $logoPath = public_path('assets/images/logo-icon.png');
+        $orgLogo = \App\Models\Setting::get('organization_logo');
+        if ($orgLogo && file_exists(public_path('uploads/'.$orgLogo))) {
+            $logoPath = public_path('uploads/'.$orgLogo);
+        }
+    @endphp
+
     <!-- HEADER -->
     <table class="header-table">
         <tr>
             <td>
-                <img src="{{ public_path('assets/images/logo-icon.png') }}" alt="Logo">
+                <img src="{{ $logoPath }}" alt="Logo">
             </td>
         </tr>
         <tr>
