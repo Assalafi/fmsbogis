@@ -66,6 +66,10 @@ class EconomicCodeController extends Controller
             return back()->withInput()->withErrors(['account_type' => 'Account Type is required for Expense Economic Codes.']);
         }
 
+        if ($error = $this->validateCodePrefix($data['code'], $data['type'], $data['account_type'] ?? null)) {
+            return back()->withInput()->withErrors(['code' => $error]);
+        }
+
         $economicCode = EconomicCode::create($data + ['created_by' => auth()->id()]);
 
         app(AuditService::class)->log('Economic Code Created', $economicCode, null, $data);
@@ -103,6 +107,10 @@ class EconomicCodeController extends Controller
             $data['account_type'] = null;
         }
 
+        if ($error = $this->validateCodePrefix($data['code'], $data['type'], $data['account_type'] ?? null)) {
+            return back()->withInput()->withErrors(['code' => $error]);
+        }
+
         $old = $economicCode->only(array_keys($data));
         $economicCode->update($data);
 
@@ -114,6 +122,28 @@ class EconomicCodeController extends Controller
     public function receiptCodes()
     {
         return EconomicCode::revenue()->active()->orderBy('code')->get(['id', 'code', 'name']);
+    }
+
+    /**
+     * Check that the code's starting digits match the chosen type.
+     */
+    protected function validateCodePrefix(string $code, string $type, ?string $accountType): ?string
+    {
+        $detected = \App\Support\AccountTypes::detectFromCode($code);
+
+        if (! $detected) {
+            return null;
+        }
+
+        if ($detected['type'] !== $type) {
+            return "Code \"{$code}\" starts with \"{$code[0]}\" which indicates {$detected['type']}, not {$type}.";
+        }
+
+        if ($type === 'expense' && $accountType !== null && $detected['account_type'] !== null && $accountType !== $detected['account_type']) {
+            return "Code \"{$code}\" starting with \"".substr($code, 0, 2)."\" indicates {$detected['account_type']}, not {$accountType}.";
+        }
+
+        return null;
     }
 
     /**
@@ -192,6 +222,13 @@ class EconomicCodeController extends Controller
 
             if (strlen($row['name']) === 0) {
                 $errors[] = "Row {$line}: Name is required for code \"{$row['code']}\".";
+                $skipped++;
+
+                continue;
+            }
+
+            if ($error = $this->validateCodePrefix($row['code'], $data['type'], $accountType)) {
+                $errors[] = "Row {$line}: {$error} Skipped.";
                 $skipped++;
 
                 continue;

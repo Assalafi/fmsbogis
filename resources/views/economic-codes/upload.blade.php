@@ -35,6 +35,7 @@
                         <option value="revenue" {{ old('type') === 'revenue' ? 'selected' : '' }}>Revenue</option>
                         <option value="expense" {{ old('type') === 'expense' ? 'selected' : '' }}>Expense</option>
                     </select>
+                    <small class="text-muted d-block mt-1">Codes starting with 1 → Revenue · 21 → Personnel · 22 → Overhead · 23 → Capital</small>
                 </div>
                 <div class="col-md-4" id="account-type-wrapper" style="display: {{ old('type') === 'expense' ? 'block' : 'none' }};">
                     <label class="form-label">Account Type <span class="text-danger">*</span></label>

@@ -65,8 +65,28 @@
 
 @push('scripts')
 <script>
-document.getElementById('type').addEventListener('change', function () {
-    document.getElementById('account-type-wrapper').style.display = this.value === 'expense' ? 'block' : 'none';
-});
+    const codeInput = document.getElementById('code');
+    const typeSelect = document.getElementById('type');
+    const accountTypeSelect = document.querySelector('select[name="account_type"]');
+    const accountTypeWrapper = document.getElementById('account-type-wrapper');
+    const rules = @json(\App\Support\AccountTypes::detectRules());
+
+    function detectType() {
+        const code = (codeInput.value || '').trim();
+        let detected = null;
+        for (const [prefix, info] of Object.entries(rules)) {
+            if (code.startsWith(prefix)) { detected = info; break; }
+        }
+        if (!detected) return;
+        typeSelect.value = detected[0];
+        accountTypeSelect.value = detected[1];
+        accountTypeWrapper.style.display = detected[0] === 'expense' ? 'block' : 'none';
+    }
+
+    codeInput.addEventListener('input', detectType);
+
+    typeSelect.addEventListener('change', function () {
+        accountTypeWrapper.style.display = this.value === 'expense' ? 'block' : 'none';
+    });
 </script>
 @endpush
