@@ -208,7 +208,7 @@ class PaymentController extends Controller
 
     public function print(Payment $payment)
     {
-        $pdf = Pdf::loadView('payments.print', [
+        $pdf = Pdf::loadView('payments.payment-voucher', [
             'payment' => $payment->load(['account', 'economicCode', 'fiscalYear', 'creator', 'approver', 'payer']),
             'amountInWords' => Money::inWords($payment->amount),
         ])->setPaper('a4');
