@@ -5,6 +5,10 @@
 @section('content')
     <x-page-header title="Economic Codes" :breadcrumbs="['Economic Codes' => null]">
         @can('economic_codes.create')
+        <a href="{{ route('economic-codes.upload') }}" class="btn btn-success">
+            <i class="material-symbols-outlined align-middle fs-18">upload</i>
+            Upload Economic Codes
+        </a>
         <a href="{{ route('economic-codes.create') }}" class="btn btn-primary">
             <i class="material-symbols-outlined align-middle fs-18">add</i>
             Add Economic Code

@@ -116,6 +116,117 @@ class EconomicCodeController extends Controller
         return EconomicCode::revenue()->active()->orderBy('code')->get(['id', 'code', 'name']);
     }
 
+    /**
+     * Show the economic code upload page.
+     */
+    public function upload()
+    {
+        return view('economic-codes.upload');
+    }
+
+    /**
+     * Download the CSV template for economic code uploads.
+     */
+    public function downloadTemplate()
+    {
+        $csv = "code,name,description\n12010101,Ground Rent,Revenue from ground rent\n22020101,Local Travel,Overhead travel expenses\n";
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="economic-code-template.csv"',
+        ]);
+    }
+
+    /**
+     * Import economic codes from an uploaded CSV/XLSX file.
+     * All codes in the file are created with the same type.
+     */
+    public function importCodes(Request $request)
+    {
+        $data = $request->validate([
+            'type' => ['required', 'in:revenue,expense'],
+            'account_type' => ['nullable', 'in:capital,overhead'],
+            'status' => ['required', 'in:active,inactive'],
+            'file' => ['required', 'file', 'mimes:csv,xlsx,xls,txt', 'max:5120'],
+        ]);
+
+        if ($data['type'] === 'expense' && empty($data['account_type'])) {
+            return back()->with($this->toast('Account Type is required when importing Expense Economic Codes.', 'danger'));
+        }
+
+        $import = new \App\Imports\EconomicCodeImport;
+
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+        } catch (\Throwable $e) {
+            return back()->with($this->toast('Could not read the file: '.$e->getMessage(), 'danger'));
+        }
+
+        $rows = collect($import->rows);
+
+        if ($rows->isEmpty()) {
+            return back()->with($this->toast('No valid rows found. Expected columns: code, name, description.', 'warning'));
+        }
+
+        $typeLabel = ucfirst($data['type']);
+        $accountType = $data['type'] === 'revenue' ? null : $data['account_type'];
+
+        $imported = 0;
+        $skipped = 0;
+        $errors = [];
+        $existing = EconomicCode::whereIn('code', $rows->pluck('code')->unique()->values()->all())->pluck('code')->flip();
+
+        foreach ($rows as $index => $row) {
+            $line = $index + 2;
+
+            if (strlen($row['code']) === 0) {
+                continue;
+            }
+
+            if ($existing->has($row['code'])) {
+                $errors[] = "Row {$line}: Economic code \"{$row['code']}\" already exists. Skipped.";
+                $skipped++;
+
+                continue;
+            }
+
+            if (strlen($row['name']) === 0) {
+                $errors[] = "Row {$line}: Name is required for code \"{$row['code']}\".";
+                $skipped++;
+
+                continue;
+            }
+
+            EconomicCode::create([
+                'code' => $row['code'],
+                'name' => $row['name'],
+                'type' => $data['type'],
+                'account_type' => $accountType,
+                'description' => $row['description'] !== '' ? $row['description'] : null,
+                'status' => $data['status'],
+                'created_by' => auth()->id(),
+            ]);
+
+            $existing->put($row['code'], true);
+            $imported++;
+        }
+
+        app(AuditService::class)->log('Economic Codes Uploaded', null, null, [
+            'type' => $data['type'],
+            'account_type' => $accountType,
+            'imported' => $imported,
+            'skipped' => $skipped,
+        ]);
+
+        return back()->with([
+            'toast' => [
+                'type' => $imported > 0 ? 'success' : 'warning',
+                'message' => "Economic Code upload complete ({$typeLabel}): {$imported} imported, {$skipped} skipped.",
+            ],
+            'upload_errors' => $errors,
+        ]);
+    }
+
     public function paymentCodes(Request $request)
     {
         $request->validate(['account_id' => ['required', 'uuid', 'exists:accounts,id']]);

@@ -41,6 +41,9 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
 
     Route::middleware('permission:economic_codes.view')->prefix('economic-codes')->name('economic-codes.')->group(function () {
         Route::get('/', [EconomicCodeController::class, 'index'])->name('index');
+        Route::get('upload', [EconomicCodeController::class, 'upload'])->name('upload')->middleware('permission:economic_codes.create');
+        Route::get('upload/template', [EconomicCodeController::class, 'downloadTemplate'])->name('upload.template')->middleware('permission:economic_codes.create');
+        Route::post('upload', [EconomicCodeController::class, 'importCodes'])->name('upload.import')->middleware('permission:economic_codes.create');
         Route::get('create', [EconomicCodeController::class, 'create'])->name('create')->middleware('permission:economic_codes.create');
         Route::post('/', [EconomicCodeController::class, 'store'])->name('store')->middleware('permission:economic_codes.create');
         Route::get('{economicCode}', [EconomicCodeController::class, 'show'])->name('show');
