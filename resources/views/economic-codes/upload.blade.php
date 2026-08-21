@@ -38,14 +38,14 @@
                     <small class="text-muted d-block mt-1">Codes starting with 1 → Revenue · 21 → Personnel · 22 → Overhead · 23 → Capital</small>
                 </div>
                 <div class="col-md-4" id="account-type-wrapper" style="display: {{ old('type') === 'expense' ? 'block' : 'none' }};">
-                    <label class="form-label">Account Type <span class="text-danger">*</span></label>
+                    <label class="form-label">Account Type (optional)</label>
                     <select name="account_type" class="form-select">
-                        <option value="">Select Account Type</option>
+                        <option value="">Auto-detect from code</option>
                         <option value="capital" {{ old('account_type') === 'capital' ? 'selected' : '' }}>Capital</option>
                         <option value="overhead" {{ old('account_type') === 'overhead' ? 'selected' : '' }}>Overhead</option>
-                <option value="personnel" {{ old('account_type') === 'personnel' ? 'selected' : '' }}>Personnel</option>
+                        <option value="personnel" {{ old('account_type') === 'personnel' ? 'selected' : '' }}>Personnel</option>
                     </select>
-                    <small class="text-muted">Required for Expense codes.</small>
+                    <small class="text-muted">Auto-detected from each code's prefix (21 = Personnel, 22 = Overhead, 23 = Capital). Only needed for codes with unrecognized prefixes.</small>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Status <span class="text-danger">*</span></label>

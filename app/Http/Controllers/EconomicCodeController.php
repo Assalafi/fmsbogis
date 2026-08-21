@@ -170,6 +170,10 @@ class EconomicCodeController extends Controller
     /**
      * Import economic codes from an uploaded CSV/XLSX file.
      * All codes in the file are created with the same type.
+     * For expense codes, the account type is auto-detected from each
+     * code's prefix (21 = Personnel, 22 = Overhead, 23 = Capital);
+     * a selected account type is only used as a fallback for
+     * unrecognized prefixes.
      */
     public function importCodes(Request $request)
     {
@@ -179,10 +183,6 @@ class EconomicCodeController extends Controller
             'status' => ['required', 'in:active,inactive'],
             'file' => ['required', 'file', 'mimes:csv,xlsx,xls,txt', 'max:5120'],
         ]);
-
-        if ($data['type'] === 'expense' && empty($data['account_type'])) {
-            return back()->with($this->toast('Account Type is required when importing Expense Economic Codes.', 'danger'));
-        }
 
         $import = new \App\Imports\EconomicCodeImport;
 
@@ -199,7 +199,7 @@ class EconomicCodeController extends Controller
         }
 
         $typeLabel = ucfirst($data['type']);
-        $accountType = $data['type'] === 'revenue' ? null : $data['account_type'];
+        $fallbackAccountType = $data['type'] === 'revenue' ? null : ($data['account_type'] ?? null);
 
         $imported = 0;
         $skipped = 0;
@@ -227,8 +227,23 @@ class EconomicCodeController extends Controller
                 continue;
             }
 
-            if ($error = $this->validateCodePrefix($row['code'], $data['type'], $accountType)) {
-                $errors[] = "Row {$line}: {$error} Skipped.";
+            $detected = \App\Support\AccountTypes::detectFromCode($row['code']);
+
+            // Type level: prefix must agree with the chosen type.
+            if ($detected && $detected['type'] !== $data['type']) {
+                $errors[] = "Row {$line}: Code \"{$row['code']}\" starting with \"{$row['code'][0]}\" indicates {$detected['type']}, not {$data['type']}. Skipped.";
+                $skipped++;
+
+                continue;
+            }
+
+            // Account type: prefer the prefix-derived type; fall back to the selected one.
+            $rowAccountType = $detected && $data['type'] === 'expense'
+                ? $detected['account_type']
+                : ($data['type'] === 'expense' ? $fallbackAccountType : null);
+
+            if ($data['type'] === 'expense' && $rowAccountType === null) {
+                $errors[] = "Row {$line}: Could not determine account type for code \"{$row['code']}\". Use a recognized prefix (21/22/23) or select an Account Type. Skipped.";
                 $skipped++;
 
                 continue;
@@ -238,7 +253,7 @@ class EconomicCodeController extends Controller
                 'code' => $row['code'],
                 'name' => $row['name'],
                 'type' => $data['type'],
-                'account_type' => $accountType,
+                'account_type' => $rowAccountType,
                 'description' => $row['description'] !== '' ? $row['description'] : null,
                 'status' => $data['status'],
                 'created_by' => auth()->id(),
@@ -250,7 +265,7 @@ class EconomicCodeController extends Controller
 
         app(AuditService::class)->log('Economic Codes Uploaded', null, null, [
             'type' => $data['type'],
-            'account_type' => $accountType,
+            'account_type' => $fallbackAccountType,
             'imported' => $imported,
             'skipped' => $skipped,
         ]);
