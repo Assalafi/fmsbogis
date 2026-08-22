@@ -189,7 +189,7 @@
             </div>
 
             <div class="org-email">
-                <strong>Email:</strong> info@bogis.org
+                <strong>Email:</strong> bogis@bornostate.gov.ng
             </div>
 
             <div class="cash-title">CASH RECEIPT</div>
