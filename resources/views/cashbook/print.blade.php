@@ -4,80 +4,112 @@
     <meta charset="utf-8">
     <title>Cashbook — {{ $account->account_name }}</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #1a1a1a; }
-        .header { text-align: center; border-bottom: 3px double #1a1a1a; padding-bottom: 10px; margin-bottom: 16px; }
-        .header h1 { margin: 0; font-size: 18px; text-transform: uppercase; }
-        .header h2 { margin: 4px 0 0; font-size: 14px; }
-        table.meta { width: 100%; margin-bottom: 12px; }
-        table.meta td { font-size: 11px; }
-        table.data { width: 100%; border-collapse: collapse; }
-        table.data th, table.data td { border: 1px solid #999; padding: 5px 6px; text-align: left; }
-        table.data th { background: #f2f2f2; }
-        table.data td.num, table.data th.num { text-align: right; }
-        .totals { margin-top: 14px; width: 100%; }
-        .totals td { padding: 3px 0; font-weight: bold; }
-        .footer { margin-top: 24px; font-size: 10px; color: #777; text-align: center; }
+        @page { size: A4 landscape; margin: 6mm; }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: #000; font-family: DejaVu Sans, sans-serif; font-size: 5.5pt; }
+        table.cashbook { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        table.cashbook th, table.cashbook td { border: 0.3pt solid #222; padding: 2px; vertical-align: bottom; overflow-wrap: break-word; }
+        table.cashbook .document-title th { border-left: 0; border-right: 0; padding: 1px; text-align: center; font-size: 10pt; font-weight: bold; }
+        table.cashbook .spacer-row th { height: 8px; }
+        table.cashbook .mda-row th { height: 18px; font-weight: bold; }
+        table.cashbook .mda-value { text-align: left; }
+        table.cashbook .mda-code-label { text-align: right; }
+        table.cashbook .mda-code-value { text-align: center; }
+        table.cashbook .ledger-side th { height: 13px; text-align: left; font-weight: bold; }
+        table.cashbook .ledger-side .credit-label { text-align: right; }
+        table.cashbook .column-headings th { height: 39px; text-align: center; font-weight: bold; }
+        table.cashbook tbody td { height: 15px; }
+        table.cashbook .amount { text-align: right; white-space: nowrap; }
+        table.cashbook .center { text-align: center; }
+        table.cashbook .ledger-total td { font-weight: bold; }
+        .cashbook-summary { width: 32%; margin: 12px 0 0 24%; font-size: 6.5pt; page-break-inside: avoid; }
+        .cashbook-summary-title { margin-bottom: 3px; font-weight: bold; text-transform: uppercase; }
+        .cashbook-summary table { width: 100%; border-collapse: collapse; }
+        .cashbook-summary th, .cashbook-summary td { padding: 2px 3px; }
+        .cashbook-summary th { text-align: left; font-weight: normal; }
+        .cashbook-summary td { text-align: right; }
+        .cashbook-summary .gross-heading th, .cashbook-summary .gross-heading td,
+        .cashbook-summary .closing-row th, .cashbook-summary .closing-row td { font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Borno State Geographic Information Service</h1>
-        <h2>Cashbook</h2>
-    </div>
-
-    <table class="meta">
-        <tr>
-            <td><strong>Account:</strong> {{ $account->account_name }}</td>
-            <td><strong>Bank:</strong> {{ $account->bank_name }}</td>
-            <td><strong>Account Number:</strong> {{ $account->account_number }}</td>
-            <td><strong>Type:</strong> {{ ucfirst($account->account_type) }}</td>
-            <td><strong>Fiscal Year:</strong> FY {{ $fiscalYear?->name ?? 'All' }}</td>
-        </tr>
-    </table>
-
-    <table class="data">
+    <table class="cashbook">
+        <colgroup>
+            <col style="width:4%"><col style="width:4%"><col style="width:3.5%"><col style="width:8.5%"><col style="width:4%">
+            <col style="width:4%"><col style="width:3.7%"><col style="width:5.6%"><col style="width:4.8%"><col style="width:5.4%">
+            <col style="width:5%"><col style="width:12%"><col style="width:4%"><col style="width:4.5%"><col style="width:4.3%">
+            <col style="width:4%"><col style="width:5.8%"><col style="width:5%"><col style="width:4.9%">
+        </colgroup>
         <thead>
-            <tr>
-                <th>Date</th>
-                <th>Reference</th>
-                <th>Economic Code</th>
-                <th>Description</th>
-                <th class="num">Receipts</th>
-                <th class="num">Payments</th>
-                <th class="num">Balance</th>
+            <tr class="document-title"><th colspan="19">BORNO STATE GOVERNMENT OF NIGERIA</th></tr>
+            <tr class="document-title"><th colspan="19">OFFICE OF THE ACCOUNTANT GENERAL</th></tr>
+            <tr class="document-title"><th colspan="19">Treasury Cash Book for the Month of {{ $periodLabel }}</th></tr>
+            <tr class="spacer-row"><th colspan="19"></th></tr>
+            <tr class="mda-row">
+                <th></th><th>NAME OF MDA:</th><th colspan="9" class="mda-value">{{ $organizationName }}</th>
+                <th colspan="2" class="mda-code-label">MDA CODE:</th><th colspan="5" class="mda-code-value">{{ $mdaCode }}</th><th></th>
+            </tr>
+            <tr class="ledger-side"><th colspan="10">DR.</th><th colspan="9" class="credit-label">CR.</th></tr>
+            <tr class="column-headings">
+                <th>DATE</th><th>TREASURY<br>RECEIPT No.</th><th>BANK CREDIT<br>SLIP No.</th><th>FROM WHOM RECEIVED</th>
+                <th>TREASURY<br>VOUCHER No.</th><th>EXPENDITURE<br>CREDITS</th><th>ECONOMIC<br>CODE</th><th>GROSS<br>₦</th><th>CASH<br>₦</th><th>BANK<br>₦</th>
+                <th>DATE</th><th>TO WHOM PAID</th><th>DEPT.<br>VOUCHER No.</th><th>TREASURY<br>VOUCHER No.</th>
+                <th>CHEQUE/MANDATE<br>No.</th><th>ECONOMIC<br>CODE</th><th>GROSS<br>₦</th><th>CASH<br>₦</th><th>BANK<br>₦</th>
             </tr>
         </thead>
         <tbody>
-            <tr style="background:#f2f2f2; font-weight:bold;">
-                <td>{{ $fiscalYear?->start_date?->format('d/m/Y') ?? '—' }}</td>
-                <td>Opening Balance</td>
-                <td>—</td>
-                <td>Opening balance brought forward (IPSAS 2 / IPSAS 33)</td>
-                <td class="num">—</td>
-                <td class="num">—</td>
-                <td class="num">{{ number_format((float) $summary['opening_balance'], 2) }}</td>
-            </tr>
-            @foreach($entries as $entry)
+            @forelse($cashbookRows as $row)
+                @php($debit = $row['debit'])
+                @php($credit = $row['credit'])
                 <tr>
-                    <td>{{ $entry->date->format('d/m/Y') }}</td>
-                    <td>{{ $entry->reference ?? '—' }}</td>
-                    <td>{{ $entry->economicCode?->code ?? '—' }}</td>
-                    <td>{{ $entry->details }}</td>
-                    <td class="num">{{ $entry->receipt_amount > 0 ? number_format((float) $entry->receipt_amount, 2) : '—' }}</td>
-                    <td class="num">{{ $entry->payment_amount > 0 ? number_format((float) $entry->payment_amount, 2) : '—' }}</td>
-                    <td class="num">{{ number_format((float) $entry->running_balance, 2) }}</td>
+                    <td>{{ ($debit['date'] ?? null)?->format('d/M/Y') }}</td>
+                    <td class="center">{{ $debit['treasury_receipt_number'] ?? '' }}</td>
+                    <td class="center">{{ $debit['bank_credit_slip_number'] ?? '' }}</td>
+                    <td>{{ $debit['from_whom_received'] ?? '' }}</td>
+                    <td class="center">{{ $debit['treasury_voucher_number'] ?? '' }}</td>
+                    <td>{{ $debit['expenditure_credits'] ?? '' }}</td>
+                    <td class="center">{{ $debit['economic_code'] ?? '' }}</td>
+                    <td class="amount">{{ isset($debit['gross']) ? number_format($debit['gross'], 2) : '' }}</td>
+                    <td class="amount">{{ isset($debit['cash']) ? number_format($debit['cash'], 2) : '' }}</td>
+                    <td class="amount">{{ isset($debit['bank']) ? number_format($debit['bank'], 2) : '' }}</td>
+                    <td>{{ ($credit['date'] ?? null)?->format('d/M/Y') }}</td>
+                    <td>{{ $credit['to_whom_paid'] ?? '' }}</td>
+                    <td class="center">{{ $credit['dept_voucher_number'] ?? '' }}</td>
+                    <td class="center">{{ $credit['treasury_voucher_number'] ?? '' }}</td>
+                    <td class="center">{{ $credit['cheque_mandate_number'] ?? '' }}</td>
+                    <td class="center">{{ $credit['economic_code'] ?? '' }}</td>
+                    <td class="amount">{{ isset($credit['gross']) ? number_format($credit['gross'], 2) : '' }}</td>
+                    <td class="amount">{{ isset($credit['cash']) ? number_format($credit['cash'], 2) : '' }}</td>
+                    <td class="amount">{{ isset($credit['bank']) ? number_format($credit['bank'], 2) : '' }}</td>
                 </tr>
-            @endforeach
+            @empty
+                <tr><td colspan="19" style="height:30px; text-align:center;">No cashbook entries found for this account.</td></tr>
+            @endforelse
         </tbody>
+        <tfoot>
+            <tr class="ledger-total">
+                <td colspan="7"></td>
+                <td class="amount">{{ number_format((float) $summary['total_receipts'], 2) }}</td>
+                <td class="amount">{{ number_format((float) $cashbookRows->sum(fn ($row) => $row['debit']['cash'] ?? 0), 2) }}</td>
+                <td class="amount">{{ number_format((float) $cashbookRows->sum(fn ($row) => $row['debit']['bank'] ?? 0), 2) }}</td>
+                <td colspan="6"></td>
+                <td class="amount">{{ number_format((float) $summary['total_payments'], 2) }}</td>
+                <td class="amount">{{ number_format((float) $cashbookRows->sum(fn ($row) => $row['credit']['cash'] ?? 0), 2) }}</td>
+                <td class="amount">{{ number_format((float) $cashbookRows->sum(fn ($row) => $row['credit']['bank'] ?? 0), 2) }}</td>
+            </tr>
+        </tfoot>
     </table>
 
-    <table class="totals">
-        <tr><td>Opening Balance</td><td class="num">₦{{ number_format((float) $summary['opening_balance'], 2) }}</td></tr>
-        <tr><td>Total Receipts</td><td class="num">₦{{ number_format((float) $summary['total_receipts'], 2) }}</td></tr>
-        <tr><td>Total Payments</td><td class="num">₦{{ number_format((float) $summary['total_payments'], 2) }}</td></tr>
-        <tr><td>Closing Balance</td><td class="num">₦{{ number_format((float) $summary['closing_balance'], 2) }}</td></tr>
-    </table>
-
-    <div class="footer">Generated by the BOGIS Finance Management System on {{ now()->format('d M Y H:i') }}.</div>
+    <div class="cashbook-summary">
+        <div class="cashbook-summary-title">Cash Book Summary for the Month of {{ $periodLabel }}</div>
+        <table>
+            <tr class="gross-heading"><th></th><td>GROSS<br>₦</td></tr>
+            <tr><th>Opening Balance</th><td>{{ number_format((float) $summary['opening_balance'], 2) }}</td></tr>
+            <tr><th>Add: Receipts</th><td>{{ number_format((float) $summary['total_receipts'], 2) }}</td></tr>
+            <tr><th>Funds Available</th><td>{{ number_format((float) $summary['opening_balance'] + (float) $summary['total_receipts'], 2) }}</td></tr>
+            <tr><th>Less: Payment</th><td>{{ number_format((float) $summary['total_payments'], 2) }}</td></tr>
+            <tr class="closing-row"><th>Closing Balance</th><td>{{ number_format((float) $summary['closing_balance'], 2) }}</td></tr>
+        </table>
+    </div>
 </body>
 </html>

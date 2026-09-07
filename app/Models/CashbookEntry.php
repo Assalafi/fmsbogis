@@ -33,11 +33,11 @@ class CashbookEntry extends BaseModel
 
     public function sourceReceipt(): BelongsTo
     {
-        return $this->belongsTo(Receipt::class, 'transaction_id')->where('transaction_type', 'receipt');
+        return $this->belongsTo(Receipt::class, 'transaction_id');
     }
 
     public function sourcePayment(): BelongsTo
     {
-        return $this->belongsTo(Payment::class, 'transaction_id')->where('transaction_type', 'payment');
+        return $this->belongsTo(Payment::class, 'transaction_id');
     }
 }
