@@ -32,7 +32,7 @@
         }
 
         .header-table td {
-            padding: 6px;
+            padding: 0;
             text-align: center;
         }
 
@@ -43,7 +43,7 @@
 
         h2 {
             font-size: 14pt;
-            margin: 8px 0;
+            margin: 0;
             font-weight: bold;
         }
 
@@ -66,7 +66,7 @@
         }
 
         .inner-table td {
-            padding: 4px 0;
+            padding: 0;
             border: none;
         }
 
