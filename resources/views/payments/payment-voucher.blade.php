@@ -22,6 +22,23 @@
             line-height: 1.4;
         }
 
+        .page-watermark {
+            position: fixed;
+            top: 38%;
+            left: 0;
+            width: 100%;
+            margin: 0;
+            color: #f2a6a6;
+            font-size: 80pt;
+            font-weight: bold;
+            line-height: 1;
+            text-align: center;
+            letter-spacing: 8px;
+            opacity: 0.28;
+            transform: rotate(-35deg);
+            z-index: -1000;
+        }
+
         table {
             border-collapse: collapse;
             width: 100%;
@@ -163,6 +180,8 @@
 </head>
 
 <body>
+    <div class="page-watermark" aria-hidden="true">ORIGINAL</div>
+
     @php
         $logoPath = public_path('assets/images/logo-icon.png');
         $orgLogo = \App\Models\Setting::get('organization_logo');
