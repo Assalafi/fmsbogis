@@ -42,12 +42,35 @@
         layoutMenuEl.forEach(function (element) {
             menu = new Menu(element, {
                 orientation: "vertical",
-                closeChildren: false,
+                closeChildren: true,
             });
             // Change parameter to true if you want scroll animation
             window.Helpers.scrollToActive((animate = false));
             window.Helpers.mainMenu = menu;
         });
+
+        const syncMenuAria = function () {
+            document
+                .querySelectorAll("#layout-menu .menu-toggle")
+                .forEach(function (toggle) {
+                    toggle.setAttribute(
+                        "aria-expanded",
+                        toggle.parentElement.classList.contains("open")
+                            ? "true"
+                            : "false"
+                    );
+                });
+        };
+
+        document
+            .querySelectorAll("#layout-menu .menu-toggle")
+            .forEach(function (toggle) {
+                toggle.addEventListener("click", function () {
+                    window.setTimeout(syncMenuAria, 0);
+                });
+            });
+
+        syncMenuAria();
     })();
 
     // Feather Icons
