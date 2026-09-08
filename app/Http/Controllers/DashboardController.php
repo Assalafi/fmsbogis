@@ -5,10 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\BankReconciliation;
 use App\Models\BankStatementLine;
-use App\Models\EconomicCodeBudget;
 use App\Models\Payment;
 use App\Models\Receipt;
-use App\Models\Virement;
 use App\Services\PerformanceService;
 use App\Support\ActiveFiscalYear;
 use Illuminate\Http\Request;
@@ -35,8 +33,6 @@ class DashboardController extends Controller
         $monthly = $performance->monthlySeries($fiscalYear);
 
         $pending = [
-            'budgets' => EconomicCodeBudget::where('status', 'pending')->count(),
-            'virements' => Virement::where('status', 'pending')->count(),
             'receipts' => Receipt::where('status', 'pending')->count(),
             'payments' => Payment::where('status', 'pending')->count(),
             'reconciliations' => BankReconciliation::where('status', 'draft')->count(),

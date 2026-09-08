@@ -16,6 +16,10 @@ class EconomicCodeBudget extends BaseModel
             'virement_out' => 'decimal:2',
             'revised_budget' => 'decimal:2',
             'approved_at' => 'datetime',
+            'source_available_funds' => 'decimal:2',
+            'source_updated_at' => 'datetime',
+            'source_synced_at' => 'datetime',
+            'source_active' => 'boolean',
         ];
     }
 
@@ -47,5 +51,13 @@ class EconomicCodeBudget extends BaseModel
     public function isApproved(): bool
     {
         return $this->status === 'approved';
+    }
+
+    public function scopeAuthoritative($query)
+    {
+        return $query
+            ->where($this->qualifyColumn('source_system'), 'ebudget')
+            ->where($this->qualifyColumn('source_active'), true)
+            ->where($this->qualifyColumn('status'), 'approved');
     }
 }

@@ -45,4 +45,11 @@ return [
         'php_binary' => env('PHP_CLI_BINARY', 'php8.3'),
     ],
 
+    'ebudget' => [
+        'api_url' => env('EBUDGET_API_URL', 'https://budget.bornostate.gov.ng/api/v1/integrations/bogis'),
+        'api_token' => env('EBUDGET_API_TOKEN', ''),
+        'mda_code' => env('EBUDGET_MDA_CODE', '016100600100'),
+        'timeout' => (int) env('EBUDGET_API_TIMEOUT', 30),
+    ],
+
 ];

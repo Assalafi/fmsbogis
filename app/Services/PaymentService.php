@@ -16,8 +16,7 @@ class PaymentService
         private BudgetService $budgetService,
         private CashbookService $cashbookService,
         private AuditService $auditService,
-    ) {
-    }
+    ) {}
 
     public function validate(Account $account, EconomicCode $economicCode, FiscalYear $fiscalYear, string $amount): ?string
     {
@@ -39,14 +38,11 @@ class PaymentService
 
         $budget = EconomicCodeBudget::where('fiscal_year_id', $fiscalYear->id)
             ->where('economic_code_id', $economicCode->id)
+            ->authoritative()
             ->first();
 
         if (! $budget) {
-            return 'No budget exists for Economic Code '.$economicCode->code.' in '.$fiscalYear->name.'.';
-        }
-
-        if ($budget->status !== 'approved') {
-            return 'The budget for Economic Code '.$economicCode->code.' has not been approved.';
+            return 'No approved eBudget allocation exists for Economic Code '.$economicCode->code.' in '.$fiscalYear->name.'. Synchronise eBudget before creating this payment.';
         }
 
         if (Money::compare($amount, 0) <= 0) {

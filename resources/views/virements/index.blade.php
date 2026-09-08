@@ -3,36 +3,36 @@
 @section('title', 'Virements')
 
 @section('content')
-    <x-page-header title="Virements" :breadcrumbs="['Budgets' => route('budgets.index'), 'Virements' => null]">
-        @can('virements.create')
-        <a href="{{ route('virements.create') }}" class="btn btn-primary">
-            <i class="material-symbols-outlined align-middle fs-18">add</i>
-            Create Virement
-        </a>
-        @endcan
-    </x-page-header>
+    <x-page-header title="Approved Virements" :breadcrumbs="['Budgets' => route('budgets.index'), 'Virements' => null]" />
+
+    <div class="alert alert-primary d-flex gap-2 align-items-start">
+        <span class="material-symbols-outlined">verified</span>
+        <div>Only approved eBudget virements involving BOGIS are shown. Incoming and outgoing amounts are automatically reflected in the approved budget balances.</div>
+    </div>
+
+    @include('budgets.partials.sync-status')
 
     <div class="card border-0 p-4 bg-white rounded-3 mb-4">
         <form method="GET" action="{{ route('virements.index') }}" class="row g-3 align-items-end">
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <label class="form-label fs-14">Fiscal Year</label>
                 <select name="fiscal_year_id" class="form-select">
                     @foreach($fiscalYears as $fy)
-                        <option value="{{ $fy->id }}" {{ request('fiscal_year_id', \App\Support\ActiveFiscalYear::id()) === $fy->id ? 'selected' : '' }}>FY {{ $fy->name }}</option>
+                        <option value="{{ $fy->id }}" {{ (string) request('fiscal_year_id', \App\Support\ActiveFiscalYear::id()) === (string) $fy->id ? 'selected' : '' }}>FY {{ $fy->name }}</option>
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-2">
-                <label class="form-label fs-14">Status</label>
-                <select name="status" class="form-select">
-                    <option value="">All</option>
-                    @foreach(['pending', 'approved', 'rejected'] as $status)
-                        <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>{{ ucfirst($status) }}</option>
-                    @endforeach
+            <div class="col-md-4">
+                <label class="form-label fs-14">Direction</label>
+                <select name="direction" class="form-select">
+                    <option value="">All directions</option>
+                    <option value="in" {{ request('direction') === 'in' ? 'selected' : '' }}>Incoming to BOGIS</option>
+                    <option value="out" {{ request('direction') === 'out' ? 'selected' : '' }}>Outgoing from BOGIS</option>
                 </select>
             </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100">Filter</button>
+            <div class="col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-grow-1">Filter</button>
+                <a href="{{ route('virements.index') }}" class="btn btn-outline-secondary">Reset</a>
             </div>
         </form>
     </div>
@@ -42,55 +42,54 @@
             <table class="table table-hover align-middle">
                 <thead>
                     <tr>
-                        <th>Date</th>
-                        <th>Reference</th>
-                        <th>From Code</th>
-                        <th>To Code</th>
+                        <th>Date / Reference</th>
+                        <th>Direction</th>
+                        <th>From</th>
+                        <th>To</th>
                         <th class="text-end">Amount</th>
+                        <th>Approval</th>
                         <th>Reason</th>
-                        <th>Status</th>
-                        <th>Created By</th>
-                        <th>Approved By</th>
-                        <th>Actions</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($virements as $virement)
+                        @php
+                            $incoming = $virement->to_mda_code === config('services.ebudget.mda_code');
+                        @endphp
                         <tr>
-                            <td>{{ $virement->date->format('d M Y') }}</td>
-                            <td>{{ $virement->reference_number }}</td>
-                            <td class="fw-medium">{{ $virement->fromEconomicCode->code }}</td>
-                            <td class="fw-medium">{{ $virement->toEconomicCode->code }}</td>
-                            <td class="text-end">₦{{ number_format((float) $virement->amount, 2) }}</td>
-                            <td>{{ \Illuminate\Support\Str::limit($virement->reason, 30) }}</td>
-                            <td>@include('components.status-badge', ['status' => $virement->status])</td>
-                            <td>{{ $virement->creator?->name ?? '—' }}</td>
-                            <td>{{ $virement->approver?->name ?? '—' }}</td>
                             <td>
-                                <div class="d-flex gap-1">
-                                    <a href="{{ route('virements.show', $virement) }}" class="text-info" title="View"><i class="material-symbols-outlined fs-20">visibility</i></a>
-                                    @can('virements.create')
-                                    @if(! $virement->isApproved())
-                                    <form method="POST" action="{{ route('virements.destroy', $virement) }}" onsubmit="return confirm('Delete this virement? This cannot be undone.');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-danger border-0 bg-transparent p-0" title="Delete"><i class="material-symbols-outlined fs-20">delete</i></button>
-                                    </form>
-                                    @endif
-                                    @endcan
-                                </div>
+                                <div>{{ $virement->date->format('d M Y') }}</div>
+                                <div class="fs-12 text-secondary">{{ $virement->reference_number }}</div>
                             </td>
+                            <td><span class="badge bg-{{ $incoming ? 'success' : 'danger' }}">{{ $incoming ? 'Incoming' : 'Outgoing' }}</span></td>
+                            <td>
+                                <div class="fw-medium">{{ $virement->fromEconomicCode->code }}</div>
+                                <div class="fs-12 text-secondary">{{ $virement->from_mda_name }}</div>
+                            </td>
+                            <td>
+                                <div class="fw-medium">{{ $virement->toEconomicCode->code }}</div>
+                                <div class="fs-12 text-secondary">{{ $virement->to_mda_name }}</div>
+                            </td>
+                            <td class="text-end fw-semibold">₦{{ number_format((float) $virement->amount, 2) }}</td>
+                            <td>
+                                <span class="badge bg-success">Approved</span>
+                                @if($virement->approval_type)<div class="fs-12 text-secondary mt-1">{{ $virement->approval_type }}</div>@endif
+                            </td>
+                            <td>{{ \Illuminate\Support\Str::limit($virement->reason, 45) }}</td>
+                            <td><a href="{{ route('virements.show', $virement) }}" class="text-info" title="View"><i class="material-symbols-outlined fs-20">visibility</i></a></td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="text-center text-secondary py-4">No virements found.</td>
+                            <td colspan="8" class="text-center text-secondary py-5">
+                                <span class="material-symbols-outlined d-block fs-1 mb-2">swap_horiz</span>
+                                No approved eBudget virements were found for this fiscal year.
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-        <div class="d-flex justify-content-center">
-            {{ $virements->links() }}
-        </div>
+        <div class="d-flex justify-content-center">{{ $virements->links() }}</div>
     </div>
 @endsection

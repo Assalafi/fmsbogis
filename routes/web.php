@@ -7,6 +7,7 @@ use App\Http\Controllers\BankReconciliationController;
 use App\Http\Controllers\BankStatementController;
 use App\Http\Controllers\BogisCashReceiptPdfController;
 use App\Http\Controllers\BudgetController;
+use App\Http\Controllers\BudgetSyncController;
 use App\Http\Controllers\CashbookController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EconomicCodeController;
@@ -66,27 +67,13 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
 
     Route::middleware('permission:budgets.view')->prefix('budgets')->name('budgets.')->group(function () {
         Route::get('/', [BudgetController::class, 'index'])->name('index');
-        Route::get('pending', [BudgetController::class, 'pending'])->name('pending');
-        Route::get('upload', [BudgetController::class, 'upload'])->name('upload')->middleware('permission:budgets.create');
-        Route::get('upload/template', [BudgetController::class, 'downloadTemplate'])->name('upload.template')->middleware('permission:budgets.create');
-        Route::post('upload', [BudgetController::class, 'importBudgetFile'])->name('upload.import')->middleware('permission:budgets.create');
-        Route::get('create', [BudgetController::class, 'create'])->name('create')->middleware('permission:budgets.create');
-        Route::post('/', [BudgetController::class, 'store'])->name('store')->middleware('permission:budgets.create');
+        Route::post('sync', [BudgetSyncController::class, 'store'])->name('sync')->middleware('permission:budgets.sync');
         Route::get('{budget}', [BudgetController::class, 'show'])->name('show');
-        Route::post('{budget}/submit', [BudgetController::class, 'submit'])->name('submit')->middleware('permission:budgets.create');
-        Route::post('{budget}/approve', [BudgetController::class, 'approve'])->name('approve')->middleware('permission:budgets.approve');
-        Route::post('{budget}/reject', [BudgetController::class, 'reject'])->name('reject')->middleware('permission:budgets.approve');
-        Route::delete('{budget}', [BudgetController::class, 'destroy'])->name('destroy')->middleware('permission:budgets.create');
     });
 
     Route::middleware('permission:virements.view')->prefix('virements')->name('virements.')->group(function () {
         Route::get('/', [VirementController::class, 'index'])->name('index');
-        Route::get('create', [VirementController::class, 'create'])->name('create')->middleware('permission:virements.create');
-        Route::post('/', [VirementController::class, 'store'])->name('store')->middleware('permission:virements.create');
         Route::get('{virement}', [VirementController::class, 'show'])->name('show');
-        Route::post('{virement}/approve', [VirementController::class, 'approve'])->name('approve')->middleware('permission:virements.approve');
-        Route::post('{virement}/reject', [VirementController::class, 'reject'])->name('reject')->middleware('permission:virements.approve');
-        Route::delete('{virement}', [VirementController::class, 'destroy'])->name('destroy')->middleware('permission:virements.create');
     });
 
     Route::middleware('permission:receipts.view')->prefix('receipts')->name('receipts.')->group(function () {

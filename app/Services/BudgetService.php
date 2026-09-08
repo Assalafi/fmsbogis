@@ -48,9 +48,10 @@ class BudgetService
     {
         $budget = EconomicCodeBudget::where('economic_code_id', $economicCode->id)
             ->where('fiscal_year_id', $fiscalYear->id)
+            ->authoritative()
             ->first();
 
-        if (! $budget || $budget->status !== 'approved') {
+        if (! $budget) {
             return '0.00';
         }
 

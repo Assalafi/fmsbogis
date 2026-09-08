@@ -92,6 +92,7 @@ class ReportController extends Controller
 
         $budgets = EconomicCodeBudget::with(['economicCode'])
             ->when($fiscalYear, fn ($q) => $q->where('fiscal_year_id', $fiscalYear->id))
+            ->authoritative()
             ->orderBy('created_at')
             ->get()
             ->map(function ($budget) use ($budgetService, $fiscalYear) {
@@ -108,8 +109,11 @@ class ReportController extends Controller
 
     protected function virementReport(Request $request, ?FiscalYear $fiscalYear): array
     {
-        $virements = Virement::with(['fromEconomicCode', 'toEconomicCode', 'preparer'])
+        $virements = Virement::with(['fromEconomicCode', 'toEconomicCode'])
             ->when($fiscalYear, fn ($q) => $q->where('fiscal_year_id', $fiscalYear->id))
+            ->where('source_system', 'ebudget')
+            ->where('source_active', true)
+            ->where('status', 'approved')
             ->orderBy('date')
             ->get();
 
@@ -208,7 +212,7 @@ class ReportController extends Controller
                 return [$headings, $rows];
 
             case 'virement_report':
-                $headings = ['Date', 'From Code', 'From Description', 'To Code', 'To Description', 'Amount (₦)', 'Status', 'Prepared By'];
+                $headings = ['Date', 'From Code', 'From Description', 'To Code', 'To Description', 'Amount (₦)', 'Status', 'Source'];
                 $rows = $data['virements']->map(fn (Virement $v) => [
                     $v->date->format('d/m/Y'),
                     $v->fromEconomicCode?->code,
@@ -217,7 +221,7 @@ class ReportController extends Controller
                     $v->toEconomicCode?->name,
                     (float) $v->amount,
                     ucfirst($v->status),
-                    $v->preparer?->name ?? '—',
+                    'eBudget',
                 ])->values()->all();
 
                 return [$headings, $rows];

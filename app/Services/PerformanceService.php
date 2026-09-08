@@ -18,7 +18,7 @@ class PerformanceService
 
     public function totals(FiscalYear $fiscalYear): array
     {
-        $approvedBudgets = EconomicCodeBudget::where('fiscal_year_id', $fiscalYear->id)->where('status', 'approved')->get();
+        $approvedBudgets = EconomicCodeBudget::where('fiscal_year_id', $fiscalYear->id)->authoritative()->get();
 
         $original = Money::normalize($approvedBudgets->sum('original_budget'));
 
@@ -64,7 +64,12 @@ class PerformanceService
             ->orderBy('code')
             ->get()
             ->map(function (EconomicCode $code) use ($fiscalYear) {
-                $budget = $code->budgets->firstWhere('fiscal_year_id', $fiscalYear->id);
+                $budget = $code->budgets->first(fn (EconomicCodeBudget $budget) =>
+                    $budget->fiscal_year_id === $fiscalYear->id
+                    && $budget->source_system === 'ebudget'
+                    && $budget->source_active
+                    && $budget->status === 'approved'
+                );
 
                 $receipts = Money::normalize(Receipt::where('economic_code_id', $code->id)
                     ->where('fiscal_year_id', $fiscalYear->id)

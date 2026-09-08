@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\EconomicCode;
-use App\Models\EconomicCodeBudget;
+use App\Imports\EconomicCodeImport;
 use App\Models\Account;
+use App\Models\CashbookEntry;
+use App\Models\EconomicCode;
 use App\Services\AuditService;
 use App\Services\BudgetService;
+use App\Support\AccountTypes;
 use App\Support\ActiveFiscalYear;
 use App\Support\Money;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class EconomicCodeController extends Controller
 {
@@ -129,7 +132,7 @@ class EconomicCodeController extends Controller
      */
     protected function validateCodePrefix(string $code, string $type, ?string $accountType): ?string
     {
-        $detected = \App\Support\AccountTypes::detectFromCode($code);
+        $detected = AccountTypes::detectFromCode($code);
 
         if (! $detected) {
             return null;
@@ -184,10 +187,10 @@ class EconomicCodeController extends Controller
             'file' => ['required', 'file', 'mimes:csv,xlsx,xls,txt', 'max:5120'],
         ]);
 
-        $import = new \App\Imports\EconomicCodeImport;
+        $import = new EconomicCodeImport;
 
         try {
-            \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+            Excel::import($import, $request->file('file'));
         } catch (\Throwable $e) {
             return back()->with($this->toast('Could not read the file: '.$e->getMessage(), 'danger'));
         }
@@ -227,7 +230,7 @@ class EconomicCodeController extends Controller
                 continue;
             }
 
-            $detected = \App\Support\AccountTypes::detectFromCode($row['code']);
+            $detected = AccountTypes::detectFromCode($row['code']);
 
             // Type level: prefix must agree with the chosen type.
             if ($detected && $detected['type'] !== $data['type']) {
@@ -291,7 +294,7 @@ class EconomicCodeController extends Controller
             ->where('account_type', $account->account_type)
             ->whereHas('budgets', function ($q) use ($fiscalYear) {
                 $q->where('fiscal_year_id', $fiscalYear?->id)
-                    ->where('status', 'approved');
+                    ->authoritative();
             })
             ->orderBy('code')
             ->get(['id', 'code', 'name', 'account_type']);
@@ -306,7 +309,10 @@ class EconomicCodeController extends Controller
         }
 
         $budgetService = app(BudgetService::class);
-        $budget = $economicCode->budgets()->where('fiscal_year_id', $fiscalYear->id)->first();
+        $budget = $economicCode->budgets()
+            ->where('fiscal_year_id', $fiscalYear->id)
+            ->authoritative()
+            ->first();
 
         return response()->json([
             'original_budget' => Money::normalize($budget?->original_budget),
@@ -327,7 +333,7 @@ class EconomicCodeController extends Controller
             || $economicCode->virementsIn()->exists()
             || $economicCode->virementsOut()->exists()
             || $economicCode->budgets()->where('status', 'approved')->exists()
-            || \App\Models\CashbookEntry::where('economic_code_id', $economicCode->id)->exists();
+            || CashbookEntry::where('economic_code_id', $economicCode->id)->exists();
 
         if ($hasActivity) {
             return back()->with($this->toast('Cannot delete this economic code — it has receipts, payments, virements, an approved budget or cashbook activity. Deactivate it instead.', 'danger'));
@@ -335,7 +341,7 @@ class EconomicCodeController extends Controller
 
         $economicCode->delete();
 
-        app(\App\Services\AuditService::class)->log('Economic Code Deleted', $economicCode);
+        app(AuditService::class)->log('Economic Code Deleted', $economicCode);
 
         return redirect()->route('economic-codes.index')->with($this->toast('Economic code deleted.'));
     }

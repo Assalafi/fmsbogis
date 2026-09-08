@@ -27,13 +27,9 @@ return [
             'fiscal_years.update' => 'Edit, activate, close, and manage fiscal years',
         ],
         'Budget Management' => [
-            'budgets.view' => 'View approved and pending budgets',
-            'budgets.create' => 'Create, upload, submit, and manage budgets',
-            'budgets.approve' => 'Approve or reject budgets',
-            'virements.view' => 'View virements',
-            'virements.create' => 'Create and manage virements',
-            'virements.approve' => 'Approve or reject virements',
-            'virements.cross_type' => 'Move funds between different economic-code types',
+            'budgets.view' => 'View approved budgets synchronised from eBudget',
+            'budgets.sync' => 'Synchronise approved budgets and virements from eBudget',
+            'virements.view' => 'View approved virements synchronised from eBudget',
         ],
         'Receipts & Payments' => [
             'receipts.view' => 'View, print, and download receipts',

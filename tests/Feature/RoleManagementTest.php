@@ -143,14 +143,17 @@ class RoleManagementTest extends TestCase
     {
         $admin = User::factory()->create();
         $admin->assignRole('Finance Admin');
+        $permissionCount = collect(config('finance_permissions.groups'))
+            ->sum(fn (array $group) => count($group));
 
         $response = $this->actingAs($admin)->get(route('roles.create'));
 
         $response->assertOk()
             ->assertSee('Select All Permissions')
             ->assertSee('Clear All')
-            ->assertSee('43 permissions available')
-            ->assertSee('Virements Cross Type');
+            ->assertSee($permissionCount.' permissions available')
+            ->assertSee('Budgets Sync')
+            ->assertDontSee('Virements Cross Type');
 
         collect(config('finance_permissions.groups'))
             ->flatMap(fn (array $group) => array_keys($group))

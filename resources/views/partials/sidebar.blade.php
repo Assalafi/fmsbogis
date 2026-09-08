@@ -64,7 +64,7 @@
                 </li>
             @endcanany
 
-            @canany(['budgets.view', 'budgets.create', 'budgets.approve', 'virements.view'])
+            @canany(['budgets.view', 'virements.view'])
                 <li class="menu-item {{ $budgetActive ? 'open active' : '' }}">
                     <a href="javascript:void(0);" class="menu-link menu-toggle {{ $budgetActive ? 'active' : '' }}" role="button" aria-expanded="{{ $budgetActive ? 'true' : 'false' }}" aria-controls="sidebar-budget">
                         <span class="material-symbols-outlined menu-icon">account_balance_wallet</span>
@@ -72,18 +72,8 @@
                     </a>
                     <ul class="menu-sub" id="sidebar-budget">
                         @can('budgets.view')
-                            <li class="menu-item {{ request()->routeIs('budgets.index', 'budgets.show', 'budgets.create') ? 'active' : '' }}">
-                                <a href="{{ route('budgets.index') }}" class="menu-link {{ request()->routeIs('budgets.index', 'budgets.show', 'budgets.create') ? 'active' : '' }}">Approved Budgets</a>
-                            </li>
-                        @endcan
-                        @can('budgets.create')
-                            <li class="menu-item {{ request()->routeIs('budgets.upload*') ? 'active' : '' }}">
-                                <a href="{{ route('budgets.upload') }}" class="menu-link {{ request()->routeIs('budgets.upload*') ? 'active' : '' }}">Upload Budget</a>
-                            </li>
-                        @endcan
-                        @can('budgets.approve')
-                            <li class="menu-item {{ request()->routeIs('budgets.pending') ? 'active' : '' }}">
-                                <a href="{{ route('budgets.pending') }}" class="menu-link {{ request()->routeIs('budgets.pending') ? 'active' : '' }}">Budget Approval</a>
+                            <li class="menu-item {{ request()->routeIs('budgets.*') ? 'active' : '' }}">
+                                <a href="{{ route('budgets.index') }}" class="menu-link {{ request()->routeIs('budgets.*') ? 'active' : '' }}">Approved Budgets</a>
                             </li>
                         @endcan
                         @can('virements.view')

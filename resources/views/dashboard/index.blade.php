@@ -42,14 +42,6 @@
                     <h4 class="mb-4">Pending Actions</h4>
                     <ul class="list-unstyled ps-0 mb-0">
                         <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                            <a href="{{ route('budgets.pending') }}" class="text-decoration-none text-body">Pending Budgets</a>
-                            <span class="badge bg-warning rounded-pill">{{ $pending['budgets'] }}</span>
-                        </li>
-                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                            <a href="{{ route('virements.index', ['status' => 'pending']) }}" class="text-decoration-none text-body">Pending Virements</a>
-                            <span class="badge bg-warning rounded-pill">{{ $pending['virements'] }}</span>
-                        </li>
-                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
                             <a href="{{ route('receipts.index', ['status' => 'pending']) }}" class="text-decoration-none text-body">Pending Receipts</a>
                             <span class="badge bg-warning rounded-pill">{{ $pending['receipts'] }}</span>
                         </li>

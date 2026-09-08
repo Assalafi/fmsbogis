@@ -5,13 +5,14 @@ namespace App\Http\Controllers;
 use App\Exports\ArrayExport;
 use App\Models\Account;
 use App\Models\EconomicCode;
-use App\Models\FiscalYear;
 use App\Services\BudgetService;
+use App\Services\CashbookService;
 use App\Services\PerformanceService;
 use App\Support\ActiveFiscalYear;
 use App\Support\Money;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
 class PerformanceController extends Controller
@@ -76,7 +77,7 @@ class PerformanceController extends Controller
         }
 
         $codes = $query->orderBy('code')->get()->map(function (EconomicCode $code) use ($fiscalYear, $budgetService) {
-            $budget = $code->budgets()->where('fiscal_year_id', $fiscalYear?->id)->first();
+            $budget = $code->budgets()->where('fiscal_year_id', $fiscalYear?->id)->authoritative()->first();
             $paid = $budgetService->paidPayments($code, $fiscalYear);
             $approvedUnpaid = $budgetService->approvedUnpaidPayments($code, $fiscalYear);
             $total = $budget ? $budgetService->totalBudget($budget) : '0.00';
@@ -172,7 +173,7 @@ class PerformanceController extends Controller
             ->orderBy('code')
             ->get()
             ->map(function (EconomicCode $code) use ($fiscalYear, $budgetService) {
-                $budget = $code->budgets()->where('fiscal_year_id', $fiscalYear?->id)->first();
+                $budget = $code->budgets()->where('fiscal_year_id', $fiscalYear?->id)->authoritative()->first();
                 $paid = $budgetService->paidPayments($code, $fiscalYear);
                 $total = $budget ? $budgetService->totalBudget($budget) : '0.00';
 
@@ -222,7 +223,7 @@ class PerformanceController extends Controller
                 'opening' => $account->opening_balance,
                 'receipts' => $account->receipts()->where('fiscal_year_id', $fiscalYear?->id)->where('status', 'posted')->sum('amount'),
                 'payments' => $account->payments()->where('fiscal_year_id', $fiscalYear?->id)->where('status', 'paid')->sum('amount'),
-                'cashbook_balance' => app(\App\Services\CashbookService::class)->closingBalance($account, $fiscalYear),
+                'cashbook_balance' => app(CashbookService::class)->closingBalance($account, $fiscalYear),
                 'bank_balance' => $bankBalance,
                 'last_reconciled' => $last,
             ];
@@ -255,7 +256,7 @@ class PerformanceController extends Controller
         $export = request('export');
 
         if ($export === 'excel') {
-            return Excel::download(new ArrayExport($headings, $rows, $title), \Illuminate\Support\Str::slug($title).'.xlsx');
+            return Excel::download(new ArrayExport($headings, $rows, $title), Str::slug($title).'.xlsx');
         }
 
         if ($export === 'pdf') {
@@ -267,7 +268,7 @@ class PerformanceController extends Controller
                 'fiscalYear' => $viewData['fiscalYear'] ?? null,
             ]))->setPaper('a4', 'landscape');
 
-            return $pdf->stream(\Illuminate\Support\Str::slug($title).'.pdf');
+            return $pdf->stream(Str::slug($title).'.pdf');
         }
 
         return view($view, $viewData);

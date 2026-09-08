@@ -12,6 +12,9 @@ class Virement extends BaseModel
             'amount' => 'decimal:2',
             'date' => 'date',
             'approved_at' => 'datetime',
+            'source_updated_at' => 'datetime',
+            'source_synced_at' => 'datetime',
+            'source_active' => 'boolean',
         ];
     }
 
