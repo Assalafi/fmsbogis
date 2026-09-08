@@ -135,7 +135,9 @@
                                 </a>
                                 <ul class="menu-sub" id="sidebar-cashbooks">
                                     @forelse(\App\Models\Account::active()->orderBy('account_name')->get() as $cbAccount)
-                                        @php($cashbookAccountActive = (string) $activeCashbookAccountId === (string) $cbAccount->getKey())
+                                        @php
+                                            $cashbookAccountActive = (string) $activeCashbookAccountId === (string) $cbAccount->getKey();
+                                        @endphp
                                         <li class="menu-item {{ $cashbookAccountActive ? 'active' : '' }}">
                                             <a href="{{ route('cashbook.show', $cbAccount) }}" class="menu-link {{ $cashbookAccountActive ? 'active' : '' }}">{{ $cbAccount->account_name }}</a>
                                         </li>

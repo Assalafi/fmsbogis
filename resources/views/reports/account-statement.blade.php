@@ -4,6 +4,7 @@
 
 @section('content')
     <x-page-header title="Account Statement Report" :breadcrumbs="['Reports' => route('reports.index'), 'Account Statement' => null]">
+        @can('reports.export')
         <a href="{{ request()->fullUrlWithQuery(['export' => 'excel']) }}" class="btn btn-success">
             <i class="material-symbols-outlined align-middle fs-18">download</i>
             Excel
@@ -12,6 +13,7 @@
             <i class="material-symbols-outlined align-middle fs-18">picture_as_pdf</i>
             PDF
         </a>
+        @endcan
     </x-page-header>
 
     <div class="card border-0 p-4 bg-white rounded-3 mb-4">
@@ -65,11 +67,13 @@
                             <td class="text-end text-danger">₦{{ number_format((float) $row['payments'], 2) }}</td>
                             <td class="text-end fw-medium">₦{{ number_format((float) $row['closing'], 2) }}</td>
                             <td>
+                                @can('cashbook.view')
                                 <div class="d-flex gap-1">
                                     <a href="{{ route('cashbook.show', $row['account']) }}" class="text-primary" title="Cashbook"><i class="material-symbols-outlined fs-20">menu_book</i></a>
                                     <a href="{{ route('cashbook.print', $row['account']) }}" class="text-secondary" title="Statement PDF" target="_blank"><i class="material-symbols-outlined fs-20">picture_as_pdf</i></a>
                                     <a href="{{ route('cashbook.excel', $row['account']) }}" class="text-success" title="Statement Excel"><i class="material-symbols-outlined fs-20">download</i></a>
                                 </div>
+                                @endcan
                             </td>
                         </tr>
                     @empty

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\ArrayExport;
 use App\Models\Account;
-use App\Models\EconomicCode;
+use App\Models\EconomicCodeBudget;
 use App\Models\FiscalYear;
 use App\Models\Payment;
 use App\Models\Receipt;
@@ -15,7 +15,9 @@ use App\Support\ActiveFiscalYear;
 use App\Support\Money;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ReportController extends Controller
 {
@@ -31,21 +33,25 @@ class ReportController extends Controller
 
         $report = str_replace('-', '_', $report);
 
-        $method = 'report'.ucfirst(\Illuminate\Support\Str::studly($report));
+        $method = Str::camel($report);
 
         if (! method_exists($this, $method)) {
             abort(404, 'Report not found.');
         }
 
+        if ($request->filled('export')) {
+            abort_unless($request->user()->can('reports.export'), 403, 'You do not have permission to export reports.');
+        }
+
         $data = $this->{$method}($request, $fiscalYear);
 
-        if ($request->filled('export') && $request->export === 'excel') {
+        if ($request->export === 'excel') {
             return $this->exportExcel($report, $data);
         }
 
         $view = 'reports.'.str_replace('_', '-', $report);
 
-        if ($request->filled('export') && $request->export === 'pdf') {
+        if ($request->export === 'pdf') {
             $pdf = Pdf::loadView($view, array_merge($data, ['fiscalYear' => $fiscalYear]))->setPaper('a4', 'landscape');
 
             return $pdf->stream($report.'.pdf');
@@ -84,7 +90,7 @@ class ReportController extends Controller
     {
         $budgetService = app(BudgetService::class);
 
-        $budgets = \App\Models\EconomicCodeBudget::with(['economicCode'])
+        $budgets = EconomicCodeBudget::with(['economicCode'])
             ->when($fiscalYear, fn ($q) => $q->where('fiscal_year_id', $fiscalYear->id))
             ->orderBy('created_at')
             ->get()
@@ -142,7 +148,7 @@ class ReportController extends Controller
         return compact('accounts', 'fiscalYear', 'totalOpening', 'totalReceipts', 'totalPayments', 'totalClosing');
     }
 
-    protected function exportExcel(string $report, array $data): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    protected function exportExcel(string $report, array $data): BinaryFileResponse
     {
         [$headings, $rows] = $this->buildExcelRows($report, $data);
 

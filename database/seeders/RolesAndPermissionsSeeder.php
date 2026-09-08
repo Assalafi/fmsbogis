@@ -5,29 +5,10 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
-    protected array $permissions = [
-        'dashboard.view',
-        'accounts.view', 'accounts.create', 'accounts.update',
-        'economic_codes.view', 'economic_codes.create', 'economic_codes.update',
-        'fiscal_years.view', 'fiscal_years.create', 'fiscal_years.update',
-        'budgets.view', 'budgets.create', 'budgets.approve',
-        'virements.view', 'virements.create', 'virements.approve', 'virements.cross_type',
-        'receipts.view', 'receipts.create', 'receipts.approve',
-        'payments.view', 'payments.create', 'payments.approve', 'payments.mark_paid',
-        'cashbook.view',
-        'bank_statements.view', 'bank_statements.create',
-        'bank_reconciliation.view', 'bank_reconciliation.create', 'bank_reconciliation.approve',
-        'performance.view',
-        'reports.view', 'reports.export',
-        'audit_logs.view',
-        'users.view', 'users.create', 'users.update',
-        'roles.view', 'roles.update',
-        'settings.view', 'settings.update',
-    ];
-
     protected array $roles = [
         'Super Admin' => '*',
         'Finance Admin' => [
@@ -36,7 +17,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'economic_codes.view', 'economic_codes.create', 'economic_codes.update',
             'fiscal_years.view', 'fiscal_years.create', 'fiscal_years.update',
             'budgets.view', 'budgets.create', 'budgets.approve',
-            'virements.view', 'virements.create', 'virements.approve',
+            'virements.view', 'virements.create', 'virements.approve', 'virements.cross_type',
             'receipts.view', 'receipts.create', 'receipts.approve',
             'payments.view', 'payments.create', 'payments.approve', 'payments.mark_paid',
             'cashbook.view',
@@ -46,7 +27,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'reports.view', 'reports.export',
             'audit_logs.view',
             'users.view', 'users.create', 'users.update',
-            'roles.view', 'roles.update',
+            'roles.view', 'roles.create', 'roles.update', 'roles.delete',
             'settings.view', 'settings.update',
         ],
         'Accountant' => [
@@ -131,19 +112,26 @@ class RolesAndPermissionsSeeder extends Seeder
 
     public function run(): void
     {
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        foreach ($this->permissions as $permission) {
+        $permissions = collect(config('finance_permissions.groups'))
+            ->flatMap(fn (array $group) => array_keys($group))
+            ->values()
+            ->all();
+
+        foreach ($permissions as $permission) {
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
-        foreach ($this->roles as $roleName => $permissions) {
+        foreach ($this->roles as $roleName => $defaultPermissions) {
             $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
 
-            if ($permissions === '*') {
-                $role->syncPermissions($this->permissions);
-            } else {
+            if ($defaultPermissions === '*') {
                 $role->syncPermissions($permissions);
+            } elseif ($role->wasRecentlyCreated) {
+                // Preserve permission changes made by administrators when this
+                // seeder is run again. Defaults are only applied to new roles.
+                $role->syncPermissions($defaultPermissions);
             }
         }
     }

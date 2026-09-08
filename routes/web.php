@@ -5,6 +5,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\BankReconciliationController;
 use App\Http\Controllers\BankStatementController;
+use App\Http\Controllers\BogisCashReceiptPdfController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CashbookController;
 use App\Http\Controllers\DashboardController;
@@ -58,7 +59,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::post('/', [FiscalYearController::class, 'store'])->name('store')->middleware('permission:fiscal_years.create');
         Route::get('{fiscalYear}/edit', [FiscalYearController::class, 'edit'])->name('edit')->middleware('permission:fiscal_years.update');
         Route::put('{fiscalYear}', [FiscalYearController::class, 'update'])->name('update')->middleware('permission:fiscal_years.update');
-        Route::post('{fiscalYear}/set-active', [FiscalYearController::class, 'setActive'])->name('set-active');
+        Route::post('{fiscalYear}/set-active', [FiscalYearController::class, 'setActive'])->name('set-active')->middleware('permission:fiscal_years.update');
         Route::post('{fiscalYear}/close', [FiscalYearController::class, 'close'])->name('close')->middleware('permission:fiscal_years.update');
         Route::delete('{fiscalYear}', [FiscalYearController::class, 'destroy'])->name('destroy')->middleware('permission:fiscal_years.update');
     });
@@ -96,7 +97,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::get('bulk-download/progress', [ReceiptController::class, 'bulkDownloadProgress'])->name('bulk-download-progress');
         Route::get('bulk-download/file/{token}', [ReceiptController::class, 'bulkDownloadFile'])->name('bulk-download-file');
         Route::get('{receipt}', [ReceiptController::class, 'show'])->name('show');
-        Route::get('{receipt}/pdf', [\App\Http\Controllers\BogisCashReceiptPdfController::class, 'show'])->name('pdf');
+        Route::get('{receipt}/pdf', [BogisCashReceiptPdfController::class, 'show'])->name('pdf');
         Route::get('{receipt}/edit', [ReceiptController::class, 'edit'])->name('edit')->middleware('permission:receipts.create');
         Route::put('{receipt}', [ReceiptController::class, 'update'])->name('update')->middleware('permission:receipts.create');
         Route::post('{receipt}/approve', [ReceiptController::class, 'approve'])->name('approve')->middleware('permission:receipts.approve');
@@ -183,7 +184,11 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
 
     Route::middleware('permission:roles.view')->prefix('roles')->name('roles.')->group(function () {
         Route::get('/', [RoleController::class, 'index'])->name('index');
+        Route::get('create', [RoleController::class, 'create'])->name('create')->middleware('permission:roles.create');
+        Route::post('/', [RoleController::class, 'store'])->name('store')->middleware('permission:roles.create');
+        Route::get('{role}/edit', [RoleController::class, 'edit'])->name('edit');
         Route::put('{role}', [RoleController::class, 'update'])->name('update')->middleware('permission:roles.update');
+        Route::delete('{role}', [RoleController::class, 'destroy'])->name('destroy')->middleware('permission:roles.delete');
     });
 
     Route::middleware('permission:settings.view')->prefix('settings')->name('settings.')->group(function () {
@@ -195,9 +200,9 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
 
     // AJAX endpoints for forms
     Route::prefix('api')->name('api.')->group(function () {
-        Route::get('economic-codes/receipt', [EconomicCodeController::class, 'receiptCodes'])->name('economic-codes.receipt');
-        Route::get('economic-codes/payment', [EconomicCodeController::class, 'paymentCodes'])->name('economic-codes.payment');
-        Route::get('economic-codes/{economicCode}/budget', [EconomicCodeController::class, 'availableBudget'])->name('economic-codes.budget');
-        Route::get('fiscal-year/{fiscalYear}/activate', [FiscalYearController::class, 'setActive'])->name('fiscal-year.activate');
+        Route::get('economic-codes/receipt', [EconomicCodeController::class, 'receiptCodes'])->name('economic-codes.receipt')->middleware('permission:receipts.create');
+        Route::get('economic-codes/payment', [EconomicCodeController::class, 'paymentCodes'])->name('economic-codes.payment')->middleware('permission:payments.create');
+        Route::get('economic-codes/{economicCode}/budget', [EconomicCodeController::class, 'availableBudget'])->name('economic-codes.budget')->middleware('permission:payments.create');
+        Route::get('fiscal-year/{fiscalYear}/activate', [FiscalYearController::class, 'setActive'])->name('fiscal-year.activate')->middleware('permission:fiscal_years.update');
     });
 });

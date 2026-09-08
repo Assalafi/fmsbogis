@@ -4,8 +4,10 @@
 
 @section('content')
     <x-page-header title="Payment Register Report" :breadcrumbs="['Reports' => route('reports.index'), 'Payment Register' => null]">
+        @can('reports.export')
         <a href="{{ route('reports.show', ['report' => 'payment-register', 'export' => 'pdf', 'fiscal_year_id' => request('fiscal_year_id'), 'date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" class="btn btn-secondary" target="_blank">PDF</a>
         <a href="{{ route('reports.show', ['report' => 'payment-register', 'export' => 'excel', 'fiscal_year_id' => request('fiscal_year_id'), 'date_from' => request('date_from'), 'date_to' => request('date_to')]) }}" class="btn btn-success">Excel</a>
+        @endcan
         <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Print</button>
     </x-page-header>
 

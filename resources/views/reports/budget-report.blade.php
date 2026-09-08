@@ -4,8 +4,10 @@
 
 @section('content')
     <x-page-header title="Budget Report" :breadcrumbs="['Reports' => route('reports.index'), 'Budget Report' => null]">
+        @can('reports.export')
         <a href="{{ route('reports.show', ['report' => 'budget-report', 'export' => 'pdf', 'fiscal_year_id' => request('fiscal_year_id')]) }}" class="btn btn-secondary" target="_blank">PDF</a>
         <a href="{{ route('reports.show', ['report' => 'budget-report', 'export' => 'excel', 'fiscal_year_id' => request('fiscal_year_id')]) }}" class="btn btn-success">Excel</a>
+        @endcan
         <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Print</button>
     </x-page-header>
 
