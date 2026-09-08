@@ -21,8 +21,12 @@
         'cashbook_only' => 'warning',
         'never' => 'secondary',
         'bank_adjustment' => 'info',
+        'cashbook_addition' => 'success',
+        'cashbook_deduction' => 'danger',
+        'bank_addition' => 'success',
+        'bank_deduction' => 'danger',
     ];
 @endphp
 <span class="badge bg-{{ $statusColors[$status] ?? 'secondary' }} bg-opacity-75 text-white">
-    {{ ucfirst(str_replace('_', ' ', $status)) }}
+    {{ $label ?? ucfirst(str_replace('_', ' ', $status)) }}
 </span>

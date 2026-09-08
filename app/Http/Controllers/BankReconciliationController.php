@@ -2,23 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ArrayExport;
 use App\Models\Account;
 use App\Models\BankReconciliation;
 use App\Models\BankReconciliationItem;
 use App\Models\BankStatement;
-use App\Models\CashbookEntry;
-use App\Exports\ArrayExport;
 use App\Services\ReconciliationService;
 use App\Support\Money;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 
 class BankReconciliationController extends Controller
 {
     public function index(Request $request)
     {
-        $query = BankReconciliation::with(['account', 'bankStatement', 'preparer', 'approver']);
+        $query = BankReconciliation::with(['account', 'bankStatement', 'preparer', 'approver'])
+            ->withCount('items');
 
         if ($request->filled('account_id')) {
             $query->where('account_id', $request->account_id);
@@ -28,7 +30,15 @@ class BankReconciliationController extends Controller
             $query->where('status', $request->status);
         }
 
-        $reconciliations = $query->orderBy('created_at', 'desc')->paginate(20)->withQueryString();
+        if ($request->filled('date_from')) {
+            $query->whereDate('reconciliation_date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('reconciliation_date', '<=', $request->date_to);
+        }
+
+        $reconciliations = $query->orderByDesc('reconciliation_date')->paginate(20)->withQueryString();
 
         return view('reconciliations.index', [
             'reconciliations' => $reconciliations,
@@ -39,17 +49,20 @@ class BankReconciliationController extends Controller
     public function create(Request $request)
     {
         $accounts = Account::active()->orderBy('account_name')->get();
-
-        $accountId = $request->filled('account_id') ? $request->account_id : $accounts->first()?->id;
+        $selectedStatement = $request->filled('statement_id')
+            ? BankStatement::find($request->statement_id)
+            : null;
+        $accountId = $selectedStatement?->account_id
+            ?? ($request->filled('account_id') ? $request->account_id : $accounts->first()?->id);
         $account = Account::find($accountId);
 
         $statements = BankStatement::where('account_id', $accountId)
-            ->whereNotIn('status', ['reconciled'])
+            ->where('status', '!=', 'reconciled')
             ->doesntHave('reconciliations')
-            ->orderBy('statement_to', 'desc')
+            ->orderByDesc('statement_to')
             ->get();
 
-        return view('reconciliations.create', compact('accounts', 'account', 'statements'));
+        return view('reconciliations.create', compact('accounts', 'account', 'statements', 'selectedStatement'));
     }
 
     public function store(Request $request)
@@ -62,144 +75,90 @@ class BankReconciliationController extends Controller
         $account = Account::findOrFail($data['account_id']);
         $statement = BankStatement::findOrFail($data['bank_statement_id']);
 
-        $reconciliation = app(ReconciliationService::class)->createFor($account, $statement);
+        try {
+            $reconciliation = app(ReconciliationService::class)->createFor($account, $statement);
+        } catch (\DomainException $exception) {
+            return back()->withInput()->with($this->toast($exception->getMessage(), 'danger'));
+        }
 
-        return redirect()->route('reconciliations.show', $reconciliation)->with($this->toast('Reconciliation draft created with auto-matches.'));
+        return redirect()->route('reconciliations.show', $reconciliation)
+            ->with($this->toast('Reconciliation draft created. Add any required reconciling adjustments.'));
     }
 
     public function show(BankReconciliation $reconciliation)
     {
-        $reconciliation->load(['account', 'bankStatement', 'preparer', 'approver', 'items.cashbookEntry', 'items.bankStatementLine']);
+        $service = app(ReconciliationService::class);
+        if (! $reconciliation->isApproved()) {
+            $service->recalculate($reconciliation);
+            $reconciliation->refresh();
+        }
 
-        $cashbookEntries = CashbookEntry::with('economicCode')
-            ->where('account_id', $reconciliation->account_id)
-            ->whereBetween('date', [$reconciliation->bankStatement->statement_from, $reconciliation->bankStatement->statement_to])
-            ->orderBy('date')
-            ->get();
+        $reconciliation->load([
+            'account',
+            'bankStatement',
+            'preparer',
+            'approver',
+            'items.cashbookEntry',
+            'items.bankStatementLine',
+        ]);
 
-        $statementLines = $reconciliation->bankStatement->lines()->orderBy('date_of_transaction')->get();
-
-        $matchedLineIds = $reconciliation->items()->whereNotNull('bank_statement_line_id')->pluck('bank_statement_line_id')->all();
-        $matchedEntryIds = $reconciliation->items()->whereNotNull('cashbook_entry_id')->pluck('cashbook_entry_id')->all();
+        $breakdown = $service->breakdown($reconciliation);
+        $canApprove = Money::isZero($reconciliation->difference);
 
         return view('reconciliations.show', compact(
             'reconciliation',
-            'cashbookEntries',
-            'statementLines',
-            'matchedLineIds',
-            'matchedEntryIds'
+            'breakdown',
+            'canApprove',
         ));
-    }
-
-    public function match(Request $request, BankReconciliation $reconciliation)
-    {
-        abort_if($reconciliation->isApproved(), 403, 'This reconciliation is approved and locked.');
-
-        $data = $request->validate([
-            'cashbook_entry_id' => ['required', 'uuid', 'exists:cashbook_entries,id'],
-            'bank_statement_line_id' => ['required', 'uuid', 'exists:bank_statement_lines,id'],
-        ]);
-
-        $entry = CashbookEntry::findOrFail($data['cashbook_entry_id']);
-        $line = $reconciliation->bankStatement->lines()->findOrFail($data['bank_statement_line_id']);
-
-        BankReconciliationItem::create([
-            'bank_reconciliation_id' => $reconciliation->id,
-            'cashbook_entry_id' => $entry->id,
-            'bank_statement_line_id' => $line->id,
-            'item_type' => 'matched',
-            'amount' => $entry->receipt_amount > 0 ? $entry->receipt_amount : $entry->payment_amount,
-        ]);
-
-        $line->update(['match_status' => 'matched']);
-
-        app(ReconciliationService::class)->recalculate($reconciliation);
-
-        return back()->with($this->toast('Items matched.'));
     }
 
     public function unmatch(BankReconciliation $reconciliation, BankReconciliationItem $item)
     {
-        abort_if($reconciliation->isApproved(), 403, 'This reconciliation is approved and locked.');
+        $this->ensureDraft($reconciliation);
+        abort_unless($item->bank_reconciliation_id === $reconciliation->id, 404);
 
-        if ($item->bankStatementLine) {
-            $item->bankStatementLine->update(['match_status' => 'unmatched']);
-        }
+        DB::transaction(function () use ($reconciliation, $item): void {
+            if ($item->bankStatementLine) {
+                $item->bankStatementLine->update(['match_status' => 'unmatched']);
+            }
 
-        $item->delete();
+            $item->delete();
+            app(ReconciliationService::class)->recalculate($reconciliation);
+        });
 
-        app(ReconciliationService::class)->recalculate($reconciliation);
-
-        return back()->with($this->toast('Match removed.'));
-    }
-
-    public function markOutstanding(BankReconciliation $reconciliation, CashbookEntry $entry)
-    {
-        abort_if($reconciliation->isApproved(), 403, 'This reconciliation is approved and locked.');
-
-        BankReconciliationItem::firstOrCreate(
-            ['bank_reconciliation_id' => $reconciliation->id, 'cashbook_entry_id' => $entry->id],
-            [
-                'item_type' => 'cashbook_only',
-                'amount' => $entry->receipt_amount > 0 ? $entry->receipt_amount : $entry->payment_amount,
-                'notes' => $entry->details,
-            ]
-        );
-
-        app(ReconciliationService::class)->recalculate($reconciliation);
-
-        return back()->with($this->toast('Item marked as outstanding.'));
-    }
-
-    public function markBankOnly(BankReconciliation $reconciliation, $lineId)
-    {
-        abort_if($reconciliation->isApproved(), 403, 'This reconciliation is approved and locked.');
-
-        $line = $reconciliation->bankStatement->lines()->findOrFail($lineId);
-
-        BankReconciliationItem::firstOrCreate(
-            ['bank_reconciliation_id' => $reconciliation->id, 'bank_statement_line_id' => $line->id],
-            [
-                'item_type' => 'bank_only',
-                'amount' => $line->amount(),
-                'notes' => $line->description,
-            ]
-        );
-
-        $line->update(['match_status' => 'bank_only']);
-
-        app(ReconciliationService::class)->recalculate($reconciliation);
-
-        return back()->with($this->toast('Item marked as bank-only.'));
+        return back()->with($this->toast('Classification removed.'));
     }
 
     public function addAdjustment(Request $request, BankReconciliation $reconciliation)
     {
-        abort_if($reconciliation->isApproved(), 403, 'This reconciliation is approved and locked.');
+        $this->ensureDraft($reconciliation);
 
         $data = $request->validate([
-            'amount' => ['required', 'numeric'],
-            'notes' => ['nullable', 'string'],
+            'adjustment_category' => ['required', Rule::in(array_keys(BankReconciliationItem::ADJUSTMENT_CATEGORIES))],
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'notes' => ['nullable', 'string', 'max:2000'],
         ]);
+
+        $category = BankReconciliationItem::ADJUSTMENT_CATEGORIES[$data['adjustment_category']];
 
         BankReconciliationItem::create([
             'bank_reconciliation_id' => $reconciliation->id,
-            'item_type' => 'bank_adjustment',
+            'item_type' => $category['type'],
             'amount' => $data['amount'],
-            'notes' => $data['notes'] ?? 'Bank adjustment',
+            'notes' => $category['label'].(filled($data['notes'] ?? null) ? ': '.$data['notes'] : ''),
         ]);
 
         app(ReconciliationService::class)->recalculate($reconciliation);
 
-        return back()->with($this->toast('Adjustment added.'));
+        return back()->with($this->toast('Manual reconciliation adjustment added.'));
     }
 
     public function approve(BankReconciliation $reconciliation)
     {
         try {
             app(ReconciliationService::class)->approve($reconciliation);
-        } catch (\DomainException $e) {
-            return back()->with($this->toast($e->getMessage(), 'danger'));
+        } catch (\DomainException $exception) {
+            return back()->with($this->toast($exception->getMessage(), 'danger'));
         }
 
         return back()->with($this->toast('Reconciliation approved and locked.'));
@@ -207,9 +166,16 @@ class BankReconciliationController extends Controller
 
     public function print(BankReconciliation $reconciliation)
     {
-        $reconciliation->load(['account', 'bankStatement', 'preparer', 'approver', 'items.cashbookEntry', 'items.bankStatementLine']);
+        $service = app(ReconciliationService::class);
+        if (! $reconciliation->isApproved()) {
+            $service->recalculate($reconciliation);
+            $reconciliation->refresh();
+        }
 
-        $pdf = Pdf::loadView('reconciliations.print', compact('reconciliation'))->setPaper('a4');
+        $reconciliation->load(['account', 'bankStatement', 'preparer', 'approver', 'items.cashbookEntry', 'items.bankStatementLine']);
+        $breakdown = $service->breakdown($reconciliation);
+
+        $pdf = Pdf::loadView('reconciliations.print', compact('reconciliation', 'breakdown'))->setPaper('a4');
 
         return $pdf->stream('reconciliation-'.$reconciliation->account->account_name.'.pdf');
     }
@@ -220,49 +186,64 @@ class BankReconciliationController extends Controller
             return back()->with($this->toast('An approved reconciliation cannot be deleted.', 'danger'));
         }
 
-        foreach ($reconciliation->items as $item) {
-            if ($item->bankStatementLine) {
-                $item->bankStatementLine->update(['match_status' => 'unmatched']);
-            }
-        }
-
-        $reconciliation->items()->delete();
-        $reconciliation->delete();
+        DB::transaction(function () use ($reconciliation): void {
+            $reconciliation->bankStatement->lines()->update(['match_status' => 'unmatched']);
+            $reconciliation->items()->delete();
+            $reconciliation->delete();
+        });
 
         return redirect()->route('reconciliations.index')->with($this->toast('Draft reconciliation deleted.'));
     }
 
     public function excel(BankReconciliation $reconciliation)
     {
+        $service = app(ReconciliationService::class);
+        if (! $reconciliation->isApproved()) {
+            $service->recalculate($reconciliation);
+            $reconciliation->refresh();
+        }
+
         $reconciliation->load(['account', 'bankStatement', 'preparer', 'approver', 'items.cashbookEntry', 'items.bankStatementLine']);
+        $breakdown = $service->breakdown($reconciliation);
 
-        $headings = ['Type', 'Source', 'Notes', 'Amount (₦)'];
-
+        $headings = ['Classification', 'Source', 'Effect', 'Notes', 'Amount (₦)'];
         $rows = $reconciliation->items->map(function (BankReconciliationItem $item) {
-            $source = '—';
-            if ($item->cashbookEntry) {
-                $source = 'Cashbook: '.$item->cashbookEntry->reference;
+            $source = 'Manual adjustment';
+            if ($item->cashbookEntry && $item->bankStatementLine) {
+                $source = 'Cashbook '.$item->cashbookEntry->reference.' / Bank '.($item->bankStatementLine->reference ?? $item->bankStatementLine->description);
+            } elseif ($item->cashbookEntry) {
+                $source = 'Cashbook: '.($item->cashbookEntry->reference ?? $item->cashbookEntry->details);
             } elseif ($item->bankStatementLine) {
                 $source = 'Bank: '.($item->bankStatementLine->reference ?? $item->bankStatementLine->description);
             }
 
             return [
-                ucfirst(str_replace('_', ' ', $item->item_type)),
+                $item->displayType(),
                 $source,
+                $item->effectLabel(),
                 $item->notes,
                 (float) $item->amount,
             ];
         })->values()->all();
 
         $rows[] = [];
-        $rows[] = ['', 'Cashbook Balance', '', (float) $reconciliation->cashbook_balance];
-        $rows[] = ['', 'Bank Statement Balance', '', (float) $reconciliation->bank_statement_balance];
-        $rows[] = ['', 'Adjusted Cashbook Balance', '', (float) $reconciliation->adjusted_cashbook_balance];
-        $rows[] = ['', 'Adjusted Bank Balance', '', (float) $reconciliation->adjusted_bank_balance];
-        $rows[] = ['', 'Difference', '', (float) $reconciliation->difference];
+        $rows[] = ['', 'Cashbook Balance', '', '', (float) $reconciliation->cashbook_balance];
+        $rows[] = ['', 'Add to Cashbook', '', '', (float) $breakdown['cashbook_additions']];
+        $rows[] = ['', 'Less from Cashbook', '', '', (float) $breakdown['cashbook_deductions']];
+        $rows[] = ['', 'Adjusted Cashbook Balance', '', '', (float) $reconciliation->adjusted_cashbook_balance];
+        $rows[] = ['', 'Bank Statement Balance', '', '', (float) $reconciliation->bank_statement_balance];
+        $rows[] = ['', 'Add to Bank Balance', '', '', (float) $breakdown['bank_additions']];
+        $rows[] = ['', 'Less from Bank Balance', '', '', (float) $breakdown['bank_deductions']];
+        $rows[] = ['', 'Adjusted Bank Balance', '', '', (float) $reconciliation->adjusted_bank_balance];
+        $rows[] = ['', 'Difference', '', '', (float) $reconciliation->difference];
 
-        $filename = 'reconciliation-'.str_replace([' ', '/'], '-', $reconciliation->account->account_name).'-'.($reconciliation->reconciliation_date->format('Y-m-d'));
+        $filename = 'reconciliation-'.str_replace([' ', '/'], '-', $reconciliation->account->account_name).'-'.$reconciliation->reconciliation_date->format('Y-m-d');
 
         return Excel::download(new ArrayExport($headings, $rows, 'Reconciliation'), $filename.'.xlsx');
+    }
+
+    private function ensureDraft(BankReconciliation $reconciliation): void
+    {
+        abort_if($reconciliation->isApproved(), 403, 'This reconciliation is approved and locked.');
     }
 }

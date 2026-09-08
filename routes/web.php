@@ -132,6 +132,9 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::get('/', [BankStatementController::class, 'index'])->name('index');
         Route::get('create', [BankStatementController::class, 'create'])->name('create')->middleware('permission:bank_statements.create');
         Route::post('/', [BankStatementController::class, 'store'])->name('store')->middleware('permission:bank_statements.create');
+        Route::get('{statement}/edit', [BankStatementController::class, 'edit'])->name('edit')->middleware('permission:bank_statements.create');
+        Route::put('{statement}', [BankStatementController::class, 'update'])->name('update')->middleware('permission:bank_statements.create');
+        Route::get('{statement}/attachment', [BankStatementController::class, 'download'])->name('download');
         Route::get('{statement}', [BankStatementController::class, 'show'])->name('show');
         Route::delete('{statement}', [BankStatementController::class, 'destroy'])->name('destroy')->middleware('permission:bank_statements.create');
     });
@@ -141,10 +144,7 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
         Route::get('create', [BankReconciliationController::class, 'create'])->name('create')->middleware('permission:bank_reconciliation.create');
         Route::post('/', [BankReconciliationController::class, 'store'])->name('store')->middleware('permission:bank_reconciliation.create');
         Route::get('{reconciliation}', [BankReconciliationController::class, 'show'])->name('show');
-        Route::post('{reconciliation}/match', [BankReconciliationController::class, 'match'])->name('match')->middleware('permission:bank_reconciliation.create');
         Route::delete('{reconciliation}/items/{item}/unmatch', [BankReconciliationController::class, 'unmatch'])->name('unmatch')->middleware('permission:bank_reconciliation.create');
-        Route::post('{reconciliation}/entries/{entry}/outstanding', [BankReconciliationController::class, 'markOutstanding'])->name('outstanding')->middleware('permission:bank_reconciliation.create');
-        Route::post('{reconciliation}/lines/{lineId}/bank-only', [BankReconciliationController::class, 'markBankOnly'])->name('bank-only')->middleware('permission:bank_reconciliation.create');
         Route::post('{reconciliation}/adjustments', [BankReconciliationController::class, 'addAdjustment'])->name('adjustments')->middleware('permission:bank_reconciliation.create');
         Route::post('{reconciliation}/approve', [BankReconciliationController::class, 'approve'])->name('approve')->middleware('permission:bank_reconciliation.approve');
         Route::get('{reconciliation}/print', [BankReconciliationController::class, 'print'])->name('print');

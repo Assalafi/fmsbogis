@@ -36,4 +36,15 @@ class BankStatement extends BaseModel
     {
         return $this->hasMany(BankReconciliation::class);
     }
+
+    public function hasAttachment(): bool
+    {
+        return filled($this->file_path);
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->status === 'reconciled'
+            || $this->reconciliations()->where('status', 'approved')->exists();
+    }
 }

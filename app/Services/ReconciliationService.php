@@ -4,9 +4,7 @@ namespace App\Services;
 
 use App\Models\Account;
 use App\Models\BankReconciliation;
-use App\Models\BankReconciliationItem;
 use App\Models\BankStatement;
-use App\Models\BankStatementLine;
 use App\Models\CashbookEntry;
 use App\Support\Money;
 use Illuminate\Support\Facades\DB;
@@ -14,124 +12,26 @@ use Illuminate\Support\Facades\DB;
 class ReconciliationService
 {
     public function __construct(
-        private CashbookService $cashbookService,
         private AuditService $auditService,
-    ) {
-    }
-
-    public function autoMatch(BankReconciliation $reconciliation): void
-    {
-        $statement = $reconciliation->bankStatement;
-        $account = $reconciliation->account;
-
-        $cashbookEntries = CashbookEntry::where('account_id', $account->id)
-            ->whereBetween('date', [$statement->statement_from, $statement->statement_to])
-            ->where('transaction_type', '!=', 'opening_balance')
-            ->get();
-
-        $lines = BankStatementLine::where('bank_statement_id', $statement->id)
-            ->where('match_status', 'unmatched')
-            ->get();
-
-        $usedEntryIds = [];
-        $usedLineIds = [];
-
-        foreach ($cashbookEntries as $entry) {
-            $match = null;
-
-            $match = $lines->first(function (BankStatementLine $line) use ($entry, $usedLineIds) {
-                if (in_array($line->id, $usedLineIds, true)) {
-                    return false;
-                }
-
-                if ($entry->reference && strtolower(trim((string) $line->reference)) === strtolower(trim((string) $entry->reference))) {
-                    return Money::compare($line->amount(), $this->entryAmount($entry)) === 0;
-                }
-
-                return false;
-            });
-
-            if (! $match) {
-                $match = $lines->first(function (BankStatementLine $line) use ($entry, $usedLineIds) {
-                    if (in_array($line->id, $usedLineIds, true)) {
-                        return false;
-                    }
-
-                    $dateTolerance = abs($line->date_of_transaction->diffInDays($entry->date)) <= 3;
-
-                    return Money::compare($line->amount(), $this->entryAmount($entry)) === 0 && $dateTolerance;
-                });
-            }
-
-            if ($match) {
-                $this->createMatchedItem($reconciliation, $entry, $match);
-                $usedEntryIds[] = $entry->id;
-                $usedLineIds[] = $match->id;
-            }
-        }
-
-        foreach ($lines as $line) {
-            if (! in_array($line->id, $usedLineIds, true)) {
-                BankReconciliationItem::create([
-                    'bank_reconciliation_id' => $reconciliation->id,
-                    'bank_statement_line_id' => $line->id,
-                    'item_type' => 'bank_only',
-                    'amount' => $line->amount(),
-                    'notes' => $line->description,
-                ]);
-                $line->update(['match_status' => 'bank_only']);
-            }
-        }
-
-        foreach ($cashbookEntries as $entry) {
-            if (! in_array($entry->id, $usedEntryIds, true)) {
-                BankReconciliationItem::create([
-                    'bank_reconciliation_id' => $reconciliation->id,
-                    'cashbook_entry_id' => $entry->id,
-                    'item_type' => 'cashbook_only',
-                    'amount' => $this->entryAmount($entry),
-                    'notes' => $entry->details,
-                ]);
-            }
-        }
-
-        $this->recalculate($reconciliation);
-    }
-
-    protected function entryAmount(CashbookEntry $entry): string
-    {
-        return Money::compare($entry->receipt_amount, 0) === 1
-            ? $entry->receipt_amount
-            : $entry->payment_amount;
-    }
-
-    protected function createMatchedItem(BankReconciliation $reconciliation, CashbookEntry $entry, BankStatementLine $line): void
-    {
-        BankReconciliationItem::create([
-            'bank_reconciliation_id' => $reconciliation->id,
-            'cashbook_entry_id' => $entry->id,
-            'bank_statement_line_id' => $line->id,
-            'item_type' => 'matched',
-            'amount' => $this->entryAmount($entry),
-        ]);
-
-        $line->update(['match_status' => 'matched']);
-    }
+    ) {}
 
     public function recalculate(BankReconciliation $reconciliation): void
     {
-        $account = $reconciliation->account;
         $statement = $reconciliation->bankStatement;
-
-        $cashbookBalance = $this->cashbookService->closingBalance($account);
+        $cashbookBalance = $this->cashbookBalanceAsAt($reconciliation->account, $statement->statement_to);
         $bankBalance = $statement->closing_balance;
+        $breakdown = $this->breakdown($reconciliation);
 
-        $bankOnly = Money::normalize($reconciliation->items()->where('item_type', 'bank_only')->sum('amount'));
-        $cashbookOnly = Money::normalize($reconciliation->items()->where('item_type', 'cashbook_only')->sum('amount'));
-        $adjustments = Money::normalize($reconciliation->items()->where('item_type', 'bank_adjustment')->sum('amount'));
-
-        $adjustedCashbook = Money::add($cashbookBalance, $cashbookOnly, $adjustments);
-        $adjustedBank = Money::add($bankBalance, $bankOnly);
+        $adjustedCashbook = Money::add(
+            $cashbookBalance,
+            $breakdown['cashbook_additions'],
+            Money::sub(0, $breakdown['cashbook_deductions']),
+        );
+        $adjustedBank = Money::add(
+            $bankBalance,
+            $breakdown['bank_additions'],
+            Money::sub(0, $breakdown['bank_deductions']),
+        );
 
         $reconciliation->update([
             'cashbook_balance' => $cashbookBalance,
@@ -142,10 +42,71 @@ class ReconciliationService
         ]);
     }
 
+    public function breakdown(BankReconciliation $reconciliation): array
+    {
+        // Always reload the items so a recalculation immediately reflects a
+        // classification that was added or removed in the current request.
+        $reconciliation->load(['items.cashbookEntry', 'items.bankStatementLine']);
+
+        $totals = [
+            'cashbook_additions' => '0.00',
+            'cashbook_deductions' => '0.00',
+            'bank_additions' => '0.00',
+            'bank_deductions' => '0.00',
+        ];
+        $manualTypeKeys = [
+            'cashbook_addition' => 'cashbook_additions',
+            'cashbook_deduction' => 'cashbook_deductions',
+            'bank_addition' => 'bank_additions',
+            'bank_deduction' => 'bank_deductions',
+        ];
+
+        foreach ($reconciliation->items as $item) {
+            $amount = Money::normalize($item->amount);
+
+            if ($item->item_type === 'bank_only' && $item->bankStatementLine) {
+                $key = $item->bankStatementLine->isCredit() ? 'cashbook_additions' : 'cashbook_deductions';
+                $totals[$key] = Money::add($totals[$key], $amount);
+            } elseif ($item->item_type === 'cashbook_only' && $item->cashbookEntry) {
+                $key = Money::compare($item->cashbookEntry->receipt_amount, 0) === 1
+                    ? 'bank_additions'
+                    : 'bank_deductions';
+                $totals[$key] = Money::add($totals[$key], $amount);
+            } elseif (isset($manualTypeKeys[$item->item_type])) {
+                $key = $manualTypeKeys[$item->item_type];
+                $totals[$key] = Money::add($totals[$key], $amount);
+            } elseif ($item->item_type === 'bank_adjustment') {
+                if (Money::isNegative($amount)) {
+                    $totals['cashbook_deductions'] = Money::add(
+                        $totals['cashbook_deductions'],
+                        ltrim($amount, '-'),
+                    );
+                } else {
+                    $totals['cashbook_additions'] = Money::add($totals['cashbook_additions'], $amount);
+                }
+            }
+        }
+
+        return $totals;
+    }
+
+    public function cashbookBalanceAsAt(Account $account, mixed $date): string
+    {
+        $query = CashbookEntry::where('account_id', $account->id)
+            ->whereDate('date', '<=', $date);
+
+        return Money::add(
+            $account->opening_balance,
+            $query->clone()->sum('receipt_amount'),
+            Money::sub(0, $query->clone()->sum('payment_amount')),
+        );
+    }
+
     public function approve(BankReconciliation $reconciliation): void
     {
-        DB::transaction(function () use ($reconciliation) {
+        DB::transaction(function () use ($reconciliation): void {
             $this->recalculate($reconciliation);
+            $reconciliation->refresh();
 
             if (! Money::isZero($reconciliation->difference)) {
                 throw new \DomainException('Reconciliation cannot be approved. Difference is ₦'.Money::format($reconciliation->difference).'.');
@@ -165,17 +126,24 @@ class ReconciliationService
 
     public function createFor(Account $account, BankStatement $statement): BankReconciliation
     {
+        if ($statement->account_id !== $account->id) {
+            throw new \DomainException('The selected bank statement does not belong to this account.');
+        }
+
+        if ($statement->status === 'reconciled' || $statement->reconciliations()->exists()) {
+            throw new \DomainException('This bank statement already has a reconciliation.');
+        }
+
         return DB::transaction(function () use ($account, $statement) {
             $reconciliation = BankReconciliation::create([
                 'account_id' => $account->id,
                 'bank_statement_id' => $statement->id,
-                'reconciliation_date' => today(),
+                'reconciliation_date' => $statement->statement_to,
                 'status' => 'draft',
                 'prepared_by' => auth()->id(),
             ]);
 
-            $this->autoMatch($reconciliation);
-
+            $this->recalculate($reconciliation);
             $this->auditService->log('Reconciliation Created', $reconciliation);
 
             return $reconciliation;
