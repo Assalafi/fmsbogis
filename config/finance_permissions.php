@@ -28,8 +28,9 @@ return [
         ],
         'Budget Management' => [
             'budgets.view' => 'View approved budgets synchronised from eBudget',
-            'budgets.sync' => 'Synchronise approved budgets and virements from eBudget',
+            'budgets.sync' => 'Synchronise approved budgets, virements, and clearances from eBudget',
             'virements.view' => 'View approved virements synchronised from eBudget',
+            'budget_clearances.view' => 'View approved budget clearances synchronised from eBudget',
         ],
         'Receipts & Payments' => [
             'receipts.view' => 'View, print, and download receipts',

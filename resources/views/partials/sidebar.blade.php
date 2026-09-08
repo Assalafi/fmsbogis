@@ -1,6 +1,6 @@
 @php
     $masterDataActive = request()->routeIs('accounts.*', 'economic-codes.*', 'fiscal-years.*');
-    $budgetActive = request()->routeIs('budgets.*', 'virements.*');
+    $budgetActive = request()->routeIs('budgets.*', 'virements.*', 'budget-clearances.*');
     $transactionsActive = request()->routeIs('receipts.*', 'payments.*');
     $cashbookActive = request()->routeIs('cashbook.*');
     $bankingActive = $cashbookActive || request()->routeIs('bank-statements.*', 'reconciliations.*');
@@ -64,7 +64,7 @@
                 </li>
             @endcanany
 
-            @canany(['budgets.view', 'virements.view'])
+            @canany(['budgets.view', 'virements.view', 'budget_clearances.view'])
                 <li class="menu-item {{ $budgetActive ? 'open active' : '' }}">
                     <a href="javascript:void(0);" class="menu-link menu-toggle {{ $budgetActive ? 'active' : '' }}" role="button" aria-expanded="{{ $budgetActive ? 'true' : 'false' }}" aria-controls="sidebar-budget">
                         <span class="material-symbols-outlined menu-icon">account_balance_wallet</span>
@@ -79,6 +79,11 @@
                         @can('virements.view')
                             <li class="menu-item {{ request()->routeIs('virements.*') ? 'active' : '' }}">
                                 <a href="{{ route('virements.index') }}" class="menu-link {{ request()->routeIs('virements.*') ? 'active' : '' }}">Virements</a>
+                            </li>
+                        @endcan
+                        @can('budget_clearances.view')
+                            <li class="menu-item {{ request()->routeIs('budget-clearances.*') ? 'active' : '' }}">
+                                <a href="{{ route('budget-clearances.index') }}" class="menu-link {{ request()->routeIs('budget-clearances.*') ? 'active' : '' }}">Budget Clearances</a>
                             </li>
                         @endcan
                     </ul>

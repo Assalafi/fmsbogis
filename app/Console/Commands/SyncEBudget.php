@@ -12,7 +12,7 @@ class SyncEBudget extends Command
 {
     protected $signature = 'ebudget:sync {session? : Four-digit fiscal year, for example 2026}';
 
-    protected $description = 'Synchronise BOGIS approved budgets and virements from eBudget';
+    protected $description = 'Synchronise BOGIS approved budgets, virements, and clearances from eBudget';
 
     public function handle(EBudgetSyncService $syncService): int
     {

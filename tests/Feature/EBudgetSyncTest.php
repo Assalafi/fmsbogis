@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\BudgetClearance;
 use App\Models\EBudgetSyncRun;
 use App\Models\EconomicCode;
 use App\Models\EconomicCodeBudget;
@@ -85,6 +86,11 @@ class EBudgetSyncTest extends TestCase
         $this->assertSame('superseded', $legacyBudget->fresh()->status);
         $this->assertFalse($legacyBudget->fresh()->source_active);
         $this->assertDatabaseCount('virements', 1);
+        $this->assertDatabaseCount('budget_clearances', 1);
+        $clearance = BudgetClearance::firstOrFail();
+        $this->assertSame('approved', $clearance->status);
+        $this->assertSame('250000.00', $clearance->amount);
+        $this->assertSame('Approved operational release', $clearance->purpose);
         $this->assertSame('completed', EBudgetSyncRun::latest('started_at')->first()->status);
 
         app(EBudgetSyncService::class)->sync($this->fiscalYear, $admin->id);
@@ -95,6 +101,7 @@ class EBudgetSyncTest extends TestCase
         $this->assertSame('1350.00', $budget->revised_budget);
         $this->assertDatabaseCount('economic_code_budgets', 3);
         $this->assertDatabaseCount('virements', 1);
+        $this->assertDatabaseCount('budget_clearances', 1);
         $this->assertDatabaseCount('ebudget_sync_runs', 2);
 
         Http::assertSent(function ($request) {
@@ -120,6 +127,39 @@ class EBudgetSyncTest extends TestCase
         $this->assertSame('failed', EBudgetSyncRun::firstOrFail()->status);
     }
 
+    public function test_clearance_removed_from_the_approved_snapshot_is_hidden(): void
+    {
+        $withClearance = $this->snapshot();
+        $withoutClearance = $this->snapshot();
+        $withoutClearance['clearances'] = [];
+        $withoutClearance['counts']['clearances'] = 0;
+        $withoutClearance['checksum'] = hash('sha256', json_encode([
+            'budgets' => $withoutClearance['budgets'],
+            'virements' => $withoutClearance['virements'],
+            'clearances' => [],
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+
+        Http::fake([
+            'https://budget.example.test/*' => Http::sequence()
+                ->push($withClearance)
+                ->push($withoutClearance),
+        ]);
+
+        app(EBudgetSyncService::class)->sync($this->fiscalYear);
+        $this->assertDatabaseHas('budget_clearances', [
+            'source_id' => '2601',
+            'status' => 'approved',
+            'source_active' => true,
+        ]);
+
+        app(EBudgetSyncService::class)->sync($this->fiscalYear);
+        $this->assertDatabaseHas('budget_clearances', [
+            'source_id' => '2601',
+            'status' => 'superseded',
+            'source_active' => false,
+        ]);
+    }
+
     public function test_budget_navigation_is_read_only_and_only_shows_retained_pages(): void
     {
         $admin = User::factory()->create();
@@ -133,6 +173,12 @@ class EBudgetSyncTest extends TestCase
             ->assertDontSee('Upload Budget')
             ->assertDontSee('Budget Approval')
             ->assertDontSee('Create Budget');
+
+        $this->actingAs($admin)
+            ->get(route('budget-clearances.index'))
+            ->assertOk()
+            ->assertSee('Approved Budget Clearances')
+            ->assertDontSee('Create Clearance');
 
         $this->actingAs($admin)->get('/budgets/upload')->assertNotFound();
         $this->actingAs($admin)->get('/virements/create')->assertNotFound();
@@ -185,10 +231,33 @@ class EBudgetSyncTest extends TestCase
             'created_at' => '2026-03-01T10:00:00+01:00',
             'updated_at' => null,
         ]];
-        $canonical = ['budgets' => $budgets, 'virements' => $virements];
+        $clearances = [[
+            'source_id' => '2601',
+            'mda_code' => '016100600100',
+            'mda_name' => 'BORNO GEOGRAPHIC INFORMATION SERVICE (BOGIS)',
+            'economic_code' => '22020605',
+            'economic_name' => 'CLEANING & FUMIGATION SERVICES',
+            'payment_category' => 'NUTRITION',
+            'approved_budget_snapshot' => '2000000.00',
+            'fund_available_before' => '500000.00',
+            'amount' => '250000.00',
+            'balance_after' => '250000.00',
+            'payee_name' => 'Approved Payee',
+            'purpose' => 'Approved operational release',
+            'activity' => 'Service delivery',
+            'remark' => 'Funds available',
+            'prepared_by' => 'preparer@example.test',
+            'approved_by' => 'approver@example.test',
+            'approval_type' => 'Ministry',
+            'status' => 'approved',
+            'created_at' => '2026-07-15T10:34:23+01:00',
+            'approved_at' => '2026-07-15T11:23:42+01:00',
+            'updated_at' => '2026-07-15T11:23:42+01:00',
+        ]];
+        $canonical = ['budgets' => $budgets, 'virements' => $virements, 'clearances' => $clearances];
 
         return [
-            'schema_version' => '1.0',
+            'schema_version' => '1.1',
             'source' => 'ebudget',
             'generated_at' => '2026-03-01T10:00:00+01:00',
             'session' => '2026',
@@ -197,9 +266,10 @@ class EBudgetSyncTest extends TestCase
                 'name' => 'BORNO GEOGRAPHIC INFORMATION SERVICE (BOGIS)',
             ],
             'checksum' => hash('sha256', json_encode($canonical, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)),
-            'counts' => ['budgets' => 2, 'virements' => 1],
+            'counts' => ['budgets' => 2, 'virements' => 1, 'clearances' => 1],
             'budgets' => $budgets,
             'virements' => $virements,
+            'clearances' => $clearances,
         ];
     }
 }

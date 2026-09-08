@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BudgetClearance;
 use App\Models\EBudgetSyncRun;
 use App\Models\EconomicCode;
 use App\Models\EconomicCodeBudget;
@@ -54,8 +55,10 @@ class EBudgetSyncService
                 'budgets_synced' => $counts['budgets'],
                 'virements_received' => count($payload['virements']),
                 'virements_synced' => $counts['virements'],
+                'clearances_received' => count($payload['clearances']),
+                'clearances_synced' => $counts['clearances'],
                 'checksum' => $payload['checksum'],
-                'message' => "Synchronised {$counts['budgets']} budgets and {$counts['virements']} approved virements from eBudget.",
+                'message' => "Synchronised {$counts['budgets']} budgets, {$counts['virements']} approved virements, and {$counts['clearances']} approved clearances from eBudget.",
                 'finished_at' => now(),
             ]);
 
@@ -103,7 +106,7 @@ class EBudgetSyncService
     private function validateSnapshot(array $payload, string $session): void
     {
         Validator::make($payload, [
-            'schema_version' => ['required', 'in:1.0'],
+            'schema_version' => ['required', 'in:1.1'],
             'source' => ['required', 'in:ebudget'],
             'session' => ['required', 'in:'.$session],
             'mda.code' => ['required', 'string', 'max:30'],
@@ -111,6 +114,7 @@ class EBudgetSyncService
             'checksum' => ['required', 'string', 'size:64'],
             'counts.budgets' => ['required', 'integer', 'min:1'],
             'counts.virements' => ['required', 'integer', 'min:0'],
+            'counts.clearances' => ['required', 'integer', 'min:0'],
             'budgets' => ['required', 'array', 'min:1'],
             'budgets.*.source_id' => ['required'],
             'budgets.*.economic_code' => ['required', 'string', 'max:30'],
@@ -120,7 +124,7 @@ class EBudgetSyncService
             'budgets.*.source_available_funds' => ['nullable', 'numeric'],
             'budgets.*.created_at' => ['nullable', 'date'],
             'budgets.*.updated_at' => ['nullable', 'date'],
-            'virements' => ['required', 'array'],
+            'virements' => ['present', 'array'],
             'virements.*.source_id' => ['required'],
             'virements.*.from_mda_code' => ['required', 'string', 'max:30'],
             'virements.*.from_mda_name' => ['required', 'string', 'max:255'],
@@ -138,6 +142,28 @@ class EBudgetSyncService
             'virements.*.status' => ['required', 'in:approved'],
             'virements.*.created_at' => ['nullable', 'date'],
             'virements.*.updated_at' => ['nullable', 'date'],
+            'clearances' => ['present', 'array'],
+            'clearances.*.source_id' => ['required'],
+            'clearances.*.mda_code' => ['required', 'string', 'max:30'],
+            'clearances.*.mda_name' => ['required', 'string', 'max:255'],
+            'clearances.*.economic_code' => ['required', 'string', 'max:30'],
+            'clearances.*.economic_name' => ['required', 'string', 'max:255'],
+            'clearances.*.payment_category' => ['nullable', 'string', 'max:30'],
+            'clearances.*.approved_budget_snapshot' => ['required', 'numeric', 'min:0'],
+            'clearances.*.fund_available_before' => ['required', 'numeric'],
+            'clearances.*.amount' => ['required', 'numeric', 'gt:0'],
+            'clearances.*.balance_after' => ['required', 'numeric'],
+            'clearances.*.payee_name' => ['nullable', 'string'],
+            'clearances.*.purpose' => ['required', 'string'],
+            'clearances.*.activity' => ['nullable', 'string'],
+            'clearances.*.remark' => ['nullable', 'string'],
+            'clearances.*.prepared_by' => ['nullable', 'string', 'max:255'],
+            'clearances.*.approved_by' => ['nullable', 'string', 'max:255'],
+            'clearances.*.approval_type' => ['nullable', 'string', 'max:60'],
+            'clearances.*.status' => ['required', 'in:approved'],
+            'clearances.*.created_at' => ['nullable', 'date'],
+            'clearances.*.approved_at' => ['nullable', 'date'],
+            'clearances.*.updated_at' => ['nullable', 'date'],
         ], [
             'session.in' => 'The eBudget response was for a different fiscal year.',
         ])->validate();
@@ -150,9 +176,11 @@ class EBudgetSyncService
 
         $budgets = collect($payload['budgets']);
         $virements = collect($payload['virements']);
+        $clearances = collect($payload['clearances']);
 
         if ((int) Arr::get($payload, 'counts.budgets') !== $budgets->count()
-            || (int) Arr::get($payload, 'counts.virements') !== $virements->count()) {
+            || (int) Arr::get($payload, 'counts.virements') !== $virements->count()
+            || (int) Arr::get($payload, 'counts.clearances') !== $clearances->count()) {
             throw new RuntimeException('The eBudget response contains inconsistent record counts.');
         }
 
@@ -165,9 +193,18 @@ class EBudgetSyncService
             throw new RuntimeException('The eBudget response contains duplicate virement records.');
         }
 
+        if ($clearances->pluck('source_id')->map(fn ($id) => (string) $id)->unique()->count() !== $clearances->count()) {
+            throw new RuntimeException('The eBudget response contains duplicate clearance records.');
+        }
+
+        if ($clearances->contains(fn (array $clearance) => ! hash_equals($expectedMda, (string) $clearance['mda_code']))) {
+            throw new RuntimeException('The eBudget response contains a clearance for a different MDA.');
+        }
+
         $canonical = [
             'budgets' => array_values($payload['budgets']),
             'virements' => array_values($payload['virements']),
+            'clearances' => array_values($payload['clearances']),
         ];
         $checksum = hash('sha256', json_encode($canonical, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
@@ -313,9 +350,62 @@ class EBudgetSyncService
                 'source_synced_at' => $syncedAt,
             ]);
 
+        $activeClearanceSourceIds = [];
+
+        foreach ($payload['clearances'] as $clearance) {
+            $economicCode = $this->upsertEconomicCode(
+                (string) $clearance['economic_code'],
+                (string) $clearance['economic_name'],
+                $clearance['payment_category'] ?? null
+            );
+            $sourceId = (string) $clearance['source_id'];
+            $sourceTimestamp = $this->timestamp($clearance['updated_at'] ?? $clearance['approved_at'] ?? null);
+
+            $localClearance = BudgetClearance::firstOrNew([
+                'source_system' => 'ebudget',
+                'source_id' => $sourceId,
+            ]);
+            $localClearance->fill([
+                'fiscal_year_id' => $fiscalYear->id,
+                'economic_code_id' => $economicCode->id,
+                'mda_code' => (string) $clearance['mda_code'],
+                'mda_name' => Str::limit((string) $clearance['mda_name'], 255, ''),
+                'approved_budget_snapshot' => Money::normalize($clearance['approved_budget_snapshot']),
+                'fund_available_before' => Money::normalize($clearance['fund_available_before']),
+                'amount' => Money::normalize($clearance['amount']),
+                'balance_after' => Money::normalize($clearance['balance_after']),
+                'payee_name' => $this->nullableText($clearance['payee_name'] ?? null),
+                'purpose' => trim((string) $clearance['purpose']),
+                'activity' => $this->nullableText($clearance['activity'] ?? null),
+                'remark' => $this->nullableText($clearance['remark'] ?? null),
+                'prepared_by' => $this->limitedText($clearance['prepared_by'] ?? null, 255),
+                'approved_by' => $this->limitedText($clearance['approved_by'] ?? null, 255),
+                'approval_type' => $this->limitedText($clearance['approval_type'] ?? null, 60),
+                'status' => 'approved',
+                'approved_at' => $this->timestamp($clearance['approved_at'] ?? $clearance['updated_at'] ?? null),
+                'source_created_at' => $this->timestamp($clearance['created_at'] ?? null),
+                'source_updated_at' => $sourceTimestamp,
+                'source_synced_at' => $syncedAt,
+                'source_active' => true,
+            ]);
+            $localClearance->save();
+            $activeClearanceSourceIds[] = $sourceId;
+        }
+
+        BudgetClearance::query()
+            ->where('fiscal_year_id', $fiscalYear->id)
+            ->where('source_system', 'ebudget')
+            ->when($activeClearanceSourceIds !== [], fn ($query) => $query->whereNotIn('source_id', $activeClearanceSourceIds))
+            ->update([
+                'status' => 'superseded',
+                'source_active' => false,
+                'source_synced_at' => $syncedAt,
+            ]);
+
         return [
             'budgets' => count($payload['budgets']),
             'virements' => count($payload['virements']),
+            'clearances' => count($payload['clearances']),
         ];
     }
 
@@ -364,6 +454,20 @@ class EBudgetSyncService
     private function timestamp(?string $value): ?Carbon
     {
         return $value ? Carbon::parse($value) : null;
+    }
+
+    private function nullableText($value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value !== '' ? $value : null;
+    }
+
+    private function limitedText($value, int $limit): ?string
+    {
+        $value = $this->nullableText($value);
+
+        return $value !== null ? Str::limit($value, $limit, '') : null;
     }
 
     private function failRun(EBudgetSyncRun $run, string $message): void

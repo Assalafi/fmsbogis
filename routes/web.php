@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\BankReconciliationController;
 use App\Http\Controllers\BankStatementController;
 use App\Http\Controllers\BogisCashReceiptPdfController;
+use App\Http\Controllers\BudgetClearanceController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\BudgetSyncController;
 use App\Http\Controllers\CashbookController;
@@ -74,6 +75,11 @@ Route::middleware(['auth', 'permission:dashboard.view'])->group(function () {
     Route::middleware('permission:virements.view')->prefix('virements')->name('virements.')->group(function () {
         Route::get('/', [VirementController::class, 'index'])->name('index');
         Route::get('{virement}', [VirementController::class, 'show'])->name('show');
+    });
+
+    Route::middleware('permission:budget_clearances.view')->prefix('budget-clearances')->name('budget-clearances.')->group(function () {
+        Route::get('/', [BudgetClearanceController::class, 'index'])->name('index');
+        Route::get('{budgetClearance}', [BudgetClearanceController::class, 'show'])->name('show');
     });
 
     Route::middleware('permission:receipts.view')->prefix('receipts')->name('receipts.')->group(function () {

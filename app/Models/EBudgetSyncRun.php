@@ -17,6 +17,8 @@ class EBudgetSyncRun extends BaseModel
             'budgets_synced' => 'integer',
             'virements_received' => 'integer',
             'virements_synced' => 'integer',
+            'clearances_received' => 'integer',
+            'clearances_synced' => 'integer',
         ];
     }
 
